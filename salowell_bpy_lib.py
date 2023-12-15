@@ -183,6 +183,7 @@ def isBone( checkedObject ):
     return False
 
 #TESTED
+#pass in an armature object or armature and you will get the armature in return.
 def getArmatureObjectsFromArmature( armature ):
     armatureType = type( armature )
     users = []

@@ -27,6 +27,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         setDeformBtn = layout.column()
         setDeformBtn.operator( 'simplemorph.219_op', text = 'Set Deform' ).action = 'SET_DEFORM'
         
+        freezeCopyBtn = layout.column()
+        freezeCopyBtn.operator( 'simplemorph.219_op', text = 'Freeze Copy' ).action = 'FREEZE_COPY'
+        
         deleteControllerBtn = layout.column()
         deleteControllerBtn.operator( 'simplemorph.219_op', text = 'Delete Controller' ).action = 'DELETE_CONTROLLER'
         
@@ -44,6 +47,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         
         if context.object is None or context.object.mode != 'EDIT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
             ResetVertexShapesKeyBtn.enabled = False
+        
+        if context.object is None or context.object.mode != 'OBJECT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
+            freezeCopyBtn.enabled = False
     
     @staticmethod
     def getSelectedVertices( context ):
@@ -59,7 +65,8 @@ class SIMPLE_MORPH_219_op( Operator ):
         items = [
             ( 'CREATE_CONTROLLER', 'clear scene', 'clear scene' ),
             ( 'DELETE_CONTROLLER', 'delete controller', 'delete controller' ),
-            ( 'SET_DEFORM', 'add sphere', 'add sphere' ),
+            ( 'SET_DEFORM', 'set deform', 'set deform' ),
+            ( 'FREEZE_COPY', 'freeze copy', 'freeze copy' ),
             ( 'RESET_VERTEX_SHAPES', 'reset vertex shapes', 'reset vertex shapes')
         ]
     )
@@ -71,6 +78,8 @@ class SIMPLE_MORPH_219_op( Operator ):
             self.delete_controller( context = context )
         elif self.action == 'SET_DEFORM':
             self.set_deform( context = context )
+        elif self.action == 'FREEZE_COPY':
+            self.freeze_copy( context = context )
         elif self.action == 'RESET_VERTEX_SHAPES':
             self.reset_vertex_shapes( context = context )
         
@@ -87,6 +96,10 @@ class SIMPLE_MORPH_219_op( Operator ):
     @staticmethod
     def set_deform( context ):
         startSetDeform( context )
+    
+    @staticmethod
+    def freeze_copy( context ):
+        startFreezeCopy( context )
     
     @staticmethod
     def reset_vertex_shapes( context ):
@@ -527,6 +540,28 @@ def startResetVertexShapes( context ):
     salowell_bpy_lib.isolate_object_select( selectedObject )
     
     bpy.ops.object.mode_set( mode = 'EDIT', toggle = True )
+
+def startFreezeCopy( context ):
+    if len( context.selected_objects ) == 0:
+        return
+    
+    parentObject = None
+    selectedObject = context.selected_objects[0]
+    
+    if type( selectedObject ) == bpy.types.Object:
+        for child in selectedObject.children:
+            if type( child.data ) == bpy.types.Armature:
+                parentObject = child
+                break
+    
+    if parentObject == None:
+        return
+    
+    salowell_bpy_lib.isolate_object_select( parentObject )
+    parentObject.parent.select_set( True )
+    bpy.ops.object.duplicate()
+    
+    context.selected_objects[0].parent = parentObject.parent
 
 def startSetDeform( context ):
     selectedObject = None

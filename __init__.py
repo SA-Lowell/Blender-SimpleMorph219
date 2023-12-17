@@ -12,6 +12,15 @@ bl_info = {
     "category": "Mesh",
 }
 
+if "bpy" in locals():
+    import importlib
+    
+    if "simplemorph219" in locals():
+        importlib.reload(simplemorph219)
+    
+    if "salowell_bpy_lib" in locals():
+        importlib.reload(salowell_bpy_lib)
+
 import bpy
 from bpy.props import EnumProperty
 from bpy.types import Operator, Panel

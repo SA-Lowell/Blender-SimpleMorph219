@@ -568,7 +568,25 @@ def startFreezeCopy( context ):
     parentObject.parent.select_set( True )
     bpy.ops.object.duplicate()
     
+    newlyCreatedObject = None
+    
+    newObjects = []
+    
+    for newObject in bpy.context.selected_objects:
+        if type( newObject.data ) != bpy.types.Armature:
+            newlyCreatedObject = newObject
+        
+        newObjects.append( newObject )
+    
+    newlyCreatedObject.location = parentObject.location
+    newlyCreatedObject.rotation_euler = parentObject.rotation_euler
+    
     context.selected_objects[0].parent = parentObject.parent
+    
+    salowell_bpy_lib.isolate_object_select( selectedObject )
+    
+    for newObject in newObjects:
+        newObject.hide_set( True )
 
 def startSetDeform( context ):
     selectedObject = None

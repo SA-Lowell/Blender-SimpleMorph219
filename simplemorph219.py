@@ -117,6 +117,7 @@ def register():
 def unregister():
     pass
 
+#TODO: If you have another armature selected while trying to create a controller it will cause some nice fun little bugs. FIX THIS.
 #Create the armature on the passed in object if no armature exists
 #Returns the existing or newly created armature as well as whether or not[boolean] a new armature had to be created.
 def set_armature( object ):
@@ -141,7 +142,13 @@ def set_armature( object ):
         bpy.ops.object.mode_set( mode = 'OBJECT' )
         bpy.ops.object.armature_add( enter_editmode = False, align = 'WORLD', location = (0.0, 0.0, 0.0), scale = (1.0, 1.0, 1.0) )
         
-        armatureObject = bpy.data.objects[0]
+        for armatureEntry in bpy.data.armatures:
+            armatureEntrysObject = salowell_bpy_lib.getArmatureObjectsFromArmature( armatureEntry )
+            #Again, we are only using the first object this armature is associated with. This plugin currently only uses a 1:1 link for armatures.
+            if len( armatureEntrysObject ) > 0 and armatureEntrysObject[0].select_get():
+                armatureObject = armatureEntrysObject[0]
+                break
+        
         armature = salowell_bpy_lib.getArmatureFromArmatureObject( armatureObject )
         armatureObject.parent = selectedObject
     else:

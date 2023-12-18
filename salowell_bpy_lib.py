@@ -4,6 +4,56 @@ from bpy.types import Operator, Panel
 from bpy.utils import register_class, unregister_class
 
 import mathutils
+import bpy_extras
+import random
+
+def unwrapObjectUV( objectToUnwrap ):
+    isolate_object_select( objectToUnwrap )
+    bpy.ops.object.mode_set( mode = 'EDIT' )
+    bpy.ops.mesh.select_mode( type = 'VERT' )
+    bpy.ops.mesh.select_all( action = 'DESELECT' )
+    bpy.ops.object.mode_set( mode = 'OBJECT' )
+    
+    for vertex in objectToUnwrap.data.vertices:
+        vertex.select = True
+    
+    bpy.ops.object.mode_set(mode = 'EDIT')
+    
+    lm =  objectToUnwrap.data.uv_layers.get( 'UVMap' )
+    if not lm:
+        lm = obj.data.uv_layers.new( name = 'UVMap' )
+    
+    lm.active = True
+    
+    bpy.ops.object.mode_set( mode = 'EDIT' )
+    bpy.ops.uv.unwrap( method = 'CONFORMAL', fill_holes = False, correct_aspect = False, use_subsurf_data = False, margin_method = 'SCALED', margin = 0.0)
+    bpy.ops.object.mode_set( mode = 'OBJECT' )
+    
+    #This is hooking into the Texel Density addon to automatically set the TD based on your current TD settings https://mrven.gumroad.com/l/CEIOR
+    #If you don't have the plugin installed it will skip over the texel density calculation.
+    if hasattr(bpy.ops.object, 'texel_density_set'):
+        bpy.ops.object.texel_density_set()
+    
+    uvIslands = bpy_extras.mesh_utils.mesh_linked_uv_islands(bpy.context.active_object.data)
+    
+    uvCenter = [0.0, 0.0]
+    uvCount = 0
+    
+    for loop in objectToUnwrap.data.loops:
+        uvCenter[0] += objectToUnwrap.data.uv_layers.active.data[ loop.index ].uv[0]
+        uvCenter[1] += objectToUnwrap.data.uv_layers.active.data[ loop.index ].uv[1]
+        uvCount += 1
+    
+    uvCenter[0] = uvCenter[0] / uvCount
+    uvCenter[1] = uvCenter[1] / uvCount
+    
+    uvNewCenter = [ random.uniform( 0.0, 1.0 ), random.uniform( 0.0, 1.0 ) ]
+    
+    uvNewCenter[0] = uvNewCenter[0] - uvCenter[0]
+    uvNewCenter[1] = uvNewCenter[1] - uvCenter[1]
+    
+    for loop in objectToUnwrap.data.loops:
+        objectToUnwrap.data.uv_layers.active.data[loop.index].uv = (objectToUnwrap.data.uv_layers.active.data[loop.index].uv[0] + uvNewCenter[0], objectToUnwrap.data.uv_layers.active.data[loop.index].uv[1] + uvNewCenter[1])
 
 #Unselects all objects and then selects just the passed in Object
 #Also returns the objects that were selected before this change is made along with the select mode.

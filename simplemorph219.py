@@ -620,6 +620,8 @@ def startCompile( context ):
         salowell_bpy_lib.isolate_object_select( armatureObject )
         bpy.ops.object.delete()
         salowell_bpy_lib.isolate_object_select( selectedObject )
+    
+    salowell_bpy_lib.unwrapObjectUV( selectedObject )
 
 def startSetDeform( context ):
     selectedObject = None

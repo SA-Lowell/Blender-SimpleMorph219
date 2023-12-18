@@ -5,16 +5,18 @@ from bpy.utils import register_class, unregister_class
 
 import mathutils
 
-#TODO: context can create a problem here. If the currently selected object is hidden it'll throw an error when you try to call bpy.ops.object.mode_set( mode = 'OBJECT' ). Make this independent of that.
 #Unselects all objects and then selects just the passed in Object
 #Also returns the objects that were selected before this change is made along with the select mode.
 def isolate_object_select( objectToIsolate ):
     selectedObjects = bpy.context.selected_objects
-    selectedMode = bpy.context.object.mode
+    selectedMode = None
     
+    if bpy.context.object != None:
+        selectedMode = bpy.context.object.mode
+    
+    bpy.context.view_layer.objects.active = objectToIsolate
     bpy.ops.object.mode_set( mode = 'OBJECT' )
     bpy.ops.object.select_all( action = 'DESELECT' )
-    bpy.context.view_layer.objects.active = objectToIsolate
     objectToIsolate.select_set( True )
     
     return selectedObjects, selectedMode

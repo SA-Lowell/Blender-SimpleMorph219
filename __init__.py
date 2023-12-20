@@ -33,10 +33,12 @@ from SimpleMorph219 import simplemorph219, salowell_bpy_lib
 def register():
     register_class( simplemorph219.SIMPLE_MORPH_219_op )
     register_class( simplemorph219.SIMPLE_MORPH_219_PT_panel )
+    register_class( simplemorph219.SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op )
 
 def unregister():
     unregister_class( simplemorph219.SIMPLE_MORPH_219_op )
     unregister_class( simplemorph219.SIMPLE_MORPH_219_PT_panel )
+    unregister_class( simplemorph219.SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op )
 
 if __name__ == '__main__':
     register()

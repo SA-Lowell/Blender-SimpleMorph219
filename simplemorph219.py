@@ -36,6 +36,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         deleteControllerBtn = layout.column()
         deleteControllerBtn.operator( 'simplemorph.219_op', text = 'Delete Controller' ).action = 'DELETE_CONTROLLER'
         
+        alignControllerBtn = layout.column()
+        alignControllerBtn.operator( 'simplemorph.219_angle_controllers_op', text = 'Angle Controller' ).action = 'ALIGN_X_P'
+        
         ResetVertexShapesKeyBtn = layout.column()
         ResetVertexShapesKeyBtn.operator( 'simplemorph.219_op', text = 'Reset Vertex Shapes' ).action = 'RESET_VERTEX_SHAPES'
         
@@ -47,6 +50,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         
         if context.object is None or ( context.object.mode != 'EDIT' and context.object.mode != 'POSE' ) or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'ARMATURE' ):
             deleteControllerBtn.enabled = False
+        
+        if context.object is None or ( context.object.mode != 'EDIT' and context.object.mode != 'POSE' ) or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'ARMATURE' ):
+            alignControllerBtn.enabled = False
         
         if context.object is None or context.object.mode != 'EDIT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
             ResetVertexShapesKeyBtn.enabled = False
@@ -61,10 +67,57 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
     def getSelectedVertices( context ):
         return salowell_bpy_lib.getSelectedVertices()
 
+class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
+    bl_idname = 'simplemorph.219_angle_controllers_op'
+    bl_label = 'Simplemorph_219_op_label'
+    bl_description = 'Simplemorph_219_op_description'
+    bl_options = { 'REGISTER', 'UNDO' }
+    
+    action: EnumProperty(
+        items = [
+            ( 'ALIGN_X_P', 'align x +', 'align x +' ),
+            ( 'ALIGN_X_M', 'align x -', 'align x -' ),
+            ( 'ALIGN_Y_P', 'align y +', 'align y +' ),
+            ( 'ALIGN_Y_M', 'align y -', 'align y -' ),
+            ( 'ALIGN_Z_P', 'align z +', 'align z +' ),
+            ( 'ALIGN_Z_M', 'align z -', 'align z -' ),
+        ]
+    )
+    
+    def execute( self, context ):
+        direction = anchorTail = mathutils.Vector( (0.0, 0.0, 0.0) )
+        
+        if self.action == 'ALIGN_X_P':
+            direction.x = 1.0
+        elif self.action == 'ALIGN_X_M':
+            direction.x = -1.0
+        elif self.action == 'ALIGN_Y_P':
+            direction.y = 1.0
+        elif self.action == 'ALIGN_Y_M':
+            direction.y = -1.0
+        elif self.action == 'ALIGN_Z_P':
+            direction.z = 1.0
+        elif self.action == 'ALIGN_Z_M':
+            direction.z = -1.0
+            
+        self.align_controller( context = context , direction = direction)
+        
+        return { 'FINISHED' }
+    
+    @staticmethod
+    def align_controller( context , direction ):
+        bone = salowell_bpy_lib.getSelectedBone()
+        
+        if bone == None:
+            salowell_bpy_lib.ShowMessageBox( "You must select a bone first.", "Notice:", "ERROR" )
+            return
+        
+        alignController( context, direction, bone)
+
 class SIMPLE_MORPH_219_op( Operator ):
     bl_idname = 'simplemorph.219_op'
-    bl_label = 'Test_219_op_label'
-    bl_description = 'Test_219_op_description'
+    bl_label = 'Simplemorph_219_op_label'
+    bl_description = 'Simplemorph_219_op_description'
     bl_options = { 'REGISTER', 'UNDO' }
     
     action: EnumProperty(
@@ -118,7 +171,7 @@ class SIMPLE_MORPH_219_op( Operator ):
     def reset_vertex_shapes( context ):
         startResetVertexShapes( context )
 
-classes = (SIMPLE_MORPH_219_PT_panel, SIMPLE_MORPH_219_op)
+classes = (SIMPLE_MORPH_219_PT_panel, SIMPLE_MORPH_219_op, SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op)
 
 register, unregister = bpy.utils.register_classes_factory(classes)
 
@@ -129,6 +182,33 @@ def register():
 
 def unregister():
     pass
+
+def alignController( context, direction, bone ):
+    boneLength = 0.1
+    bone = salowell_bpy_lib.getSelectedBone()
+    
+    if bone == None:
+        return
+    
+    if isinstance(direction, mathutils.Vector) != True:
+        return
+    
+    direction.normalize()
+    direction *= boneLength
+    
+    armatureObject = salowell_bpy_lib.getArmatureObjectsFromArmature( bone.id_data )[0]
+    
+    anchorBone, reverserBone, baseBone, controllerBone = getAllBonesOfController( bone )
+    
+    anchorBone = salowell_bpy_lib.getEditBoneVersionOfBoneFromName( anchorBone.name, armatureObject )
+    reverserBone = salowell_bpy_lib.getEditBoneVersionOfBoneFromName( reverserBone.name, armatureObject )
+    baseBone = salowell_bpy_lib.getEditBoneVersionOfBoneFromName( baseBone.name, armatureObject )
+    controllerBone = salowell_bpy_lib.getEditBoneVersionOfBoneFromName( controllerBone.name, armatureObject )
+    
+    anchorBone.tail = anchorBone.head + direction
+    reverserBone.tail = reverserBone.head + direction
+    baseBone.tail = baseBone.head + direction
+    controllerBone.tail = controllerBone.head + direction
 
 #TODO: If you have another armature selected while trying to create a controller it will cause some nice fun little bugs. FIX THIS.
 #Create the armature on the passed in object if no armature exists

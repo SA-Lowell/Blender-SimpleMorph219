@@ -280,6 +280,9 @@ def getPoseBoneVersionOfBoneFromName( boneName, armatureObject ):
     return armatureObject.pose.bones[ boneName ]
 
 def getEditBoneVersionOfBoneFromName( boneName, armatureObject ):
+    if bpy.context.object.mode != 'EDIT':
+        bpy.ops.object.mode_set( mode = 'EDIT', toggle = True )
+    
     return armatureObject.data.edit_bones[ boneName ]
 
 def getPoseBoneVersionOfBone( bone ):

@@ -238,7 +238,7 @@ def set_armature( object ):
         for armatureEntry in bpy.data.armatures:
             armatureEntrysObject = salowell_bpy_lib.getArmatureObjectsFromArmature( armatureEntry )
             #Again, we are only using the first object this armature is associated with. This plugin currently only uses a 1:1 link for armatures.
-            if len( armatureEntrysObject ) > 0 and armatureEntrysObject[0].select_get():
+            if armatureEntrysObject != None and len( armatureEntrysObject ) > 0 and armatureEntrysObject[0].select_get():
                 armatureObject = armatureEntrysObject[0]
                 break
         

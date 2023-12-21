@@ -2,7 +2,7 @@ bl_info = {
     "name": "Simple Morph 219",
     "description": "Suitable for building repeatable meshes that each require unique simple tweaks to the same shape.",
     "author": "S.A. Lowell",
-    "version": (0.8, 413500, 2023.12, 21.02, 36.59, 1703126219),
+    "version": (0.9, 416856, 2023.12, 21.16, 46.59, 1703177219),
     "blender": (4, 0, 2),
     "location": "View3D > N-Panel(Side Panel) > Item > Simple Morph 219",
     "warning": "Currently in beta.",
@@ -34,11 +34,13 @@ def register():
     register_class( simplemorph219.SIMPLE_MORPH_219_op )
     register_class( simplemorph219.SIMPLE_MORPH_219_PT_panel )
     register_class( simplemorph219.SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op )
+    register_class( simplemorph219.SIMPLE_MORPH_219_DECOMPILE_op )
 
 def unregister():
     unregister_class( simplemorph219.SIMPLE_MORPH_219_op )
     unregister_class( simplemorph219.SIMPLE_MORPH_219_PT_panel )
     unregister_class( simplemorph219.SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op )
+    unregister_class( simplemorph219.SIMPLE_MORPH_219_DECOMPILE_op )
 
 if __name__ == '__main__':
     register()

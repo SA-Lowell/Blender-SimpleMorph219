@@ -5,6 +5,7 @@ from bpy.types import Operator, Panel
 from bpy.utils import register_class, unregister_class
 
 import mathutils
+from mathutils import Euler
 
 class SIMPLE_MORPH_219_PT_panel( Panel ):
     bl_idname = 'SIMPLE_MORPH_219_PT_panel'
@@ -32,6 +33,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         
         compileBtn = layout.column()
         compileBtn.operator( 'simplemorph.219_op', text = 'Compile' ).action = 'COMPILE'
+        
+        decompileBtn = layout.column()
+        decompileBtn.operator( 'simplemorph.219_decompile_op', text = 'Decompile' ).action = 'DECOMPILE'
         
         deleteControllerBtn = layout.column()
         deleteControllerBtn.operator( 'simplemorph.219_op', text = 'Delete Controller' ).action = 'DELETE_CONTROLLER'
@@ -62,6 +66,9 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         
         if context.object is None or context.object.mode != 'OBJECT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
             compileBtn.enabled = False
+        
+        if context.object is None or context.object.mode != 'OBJECT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
+            decompileBtn.enabled = False
     
     @staticmethod
     def getSelectedVertices( context ):
@@ -113,6 +120,30 @@ class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
             return
         
         alignController( context, direction, bone)
+
+class SIMPLE_MORPH_219_DECOMPILE_op( Operator ):
+    bl_idname = 'simplemorph.219_decompile_op'
+    bl_label = 'Simple Morph 219 Decompiler'
+    bl_description = 'Simplemorph_219_op_description'
+    bl_options = { 'REGISTER', 'UNDO' }
+    
+    action: EnumProperty(
+        items = [
+            ( 'DECOMPILE', 'decompile', 'decompile' ),
+        ]
+    )
+    
+    def execute( self, context ):
+        selectedObject = context.selected_objects[0]
+        salowell_bpy_lib.isolate_object_select( selectedObject )
+        
+        self.decompile( context, selectedObject )
+        
+        return { 'FINISHED' }
+    
+    @staticmethod
+    def decompile( context, selectedObject ):
+        startDecompile( context, selectedObject )
 
 class SIMPLE_MORPH_219_op( Operator ):
     bl_idname = 'simplemorph.219_op'
@@ -171,7 +202,7 @@ class SIMPLE_MORPH_219_op( Operator ):
     def reset_vertex_shapes( context ):
         startResetVertexShapes( context )
 
-classes = (SIMPLE_MORPH_219_PT_panel, SIMPLE_MORPH_219_op, SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op)
+classes = (SIMPLE_MORPH_219_PT_panel, SIMPLE_MORPH_219_op, SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op, SIMPLE_MORPH_219_DECOMPILE_op)
 
 register, unregister = bpy.utils.register_classes_factory(classes)
 
@@ -702,6 +733,56 @@ def startCompile( context ):
         salowell_bpy_lib.isolate_object_select( selectedObject )
     
     salowell_bpy_lib.unwrapObjectUV( selectedObject )
+
+def startDecompile( context, selectedObject ):
+    foundNewObject = False
+    newObject = None
+    newArmatureObject = None
+    
+    for child in selectedObject.children:
+        if child.hide_get():
+            newObject = child
+            foundNewObject = True
+            break
+    
+    if foundNewObject == False:
+        salowell_bpy_lib.ShowMessageBox( "You must select an object that has been previously compiled by Simple Morph 219. (Object not found)", "Notice:", "ERROR" )
+        return
+    
+    for child in newObject.children:
+        newArmature = salowell_bpy_lib.getArmatureFromArmatureObject( child )
+        
+        if newArmature != None:
+            newArmatureObject = child
+            break
+    
+    if newArmatureObject == None:
+        salowell_bpy_lib.ShowMessageBox( "You must select an object that has been previously compiled by Simple Morph 219. (Armature object not found)", "Notice:", "ERROR" )
+        return
+    
+    newObject.hide_set( False )
+    newArmatureObject.hide_set( False )
+    
+    newObject.parent = selectedObject.parent
+    
+    newObjectPosition = mathutils.Vector( (0.0, 0.0, 0.0) )
+    newObjectPosition.x = selectedObject.location.x
+    newObjectPosition.y = selectedObject.location.y
+    newObjectPosition.z = selectedObject.location.z
+    newObject.location = newObjectPosition
+    
+    newObjectRotation = Euler((0.0, 0.0, 0.0), 'XYZ')
+    newObjectPosition.x = selectedObject.rotation_euler.x
+    newObjectPosition.y = selectedObject.rotation_euler.y
+    newObjectPosition.z = selectedObject.rotation_euler.z
+    newObject.rotation_euler = newObjectPosition
+    
+    newObjName = selectedObject.name
+    
+    bpy.data.objects.remove( selectedObject, do_unlink = True )
+    newObject.name = newObjName
+    
+    salowell_bpy_lib.isolate_object_select( newObject )
 
 def startSetDeform( context ):
     selectedObject = None

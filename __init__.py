@@ -1,8 +1,16 @@
+import bpy
+from bpy.props import EnumProperty
+from bpy.types import Operator, Panel
+from bpy.utils import register_class, unregister_class
+
+import mathutils
+from . import simplemorph219, salowell_bpy_lib, realcorner219
+
 bl_info = {
     "name": "Simple Morph 219",
     "description": "Suitable for building repeatable meshes that each require unique simple tweaks to the same shape.",
     "author": "S.A. Lowell",
-    "version": (0.9, 416856, 2023.12, 21.16, 46.59, 1703177219),
+    "version": (0.10, 427330, 2023.12, 27.13, 36.59, 1703684219),
     "blender": (4, 0, 2),
     "location": "View3D > N-Panel(Side Panel) > Item > Simple Morph 219",
     "warning": "Currently in beta.",
@@ -16,19 +24,10 @@ if "bpy" in locals():
     import importlib
     
     if "simplemorph219" in locals():
-        importlib.reload(simplemorph219)
+        importlib.reload( simplemorph219 )
     
     if "salowell_bpy_lib" in locals():
-        importlib.reload(salowell_bpy_lib)
-
-import bpy
-from bpy.props import EnumProperty
-from bpy.types import Operator, Panel
-from bpy.utils import register_class, unregister_class
-
-import mathutils
-
-from SimpleMorph219 import simplemorph219, salowell_bpy_lib
+        importlib.reload( salowell_bpy_lib )
 
 def register():
     register_class( simplemorph219.SIMPLE_MORPH_219_op )

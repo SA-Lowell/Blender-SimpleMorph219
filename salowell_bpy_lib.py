@@ -1,11 +1,6 @@
-import bpy
-from bpy.props import EnumProperty
-from bpy.types import Operator, Panel
-from bpy.utils import register_class, unregister_class
-
-import mathutils
-import bpy_extras
 import random
+import bpy
+import mathutils
 
 def unwrapObjectUV( objectToUnwrap ):
     isolate_object_select( objectToUnwrap )
@@ -34,7 +29,8 @@ def unwrapObjectUV( objectToUnwrap ):
     if hasattr(bpy.ops.object, 'texel_density_set'):
         bpy.ops.object.texel_density_set()
     
-    uvIslands = bpy_extras.mesh_utils.mesh_linked_uv_islands(bpy.context.active_object.data)
+    #TODO: Grab the UV islands and handle them each separately.
+    #uvIslands:list = bpy_extras.mesh_utils.mesh_linked_uv_islands(bpy.context.active_object.data)
     
     uvCenter = [0.0, 0.0]
     uvCount = 0
@@ -61,7 +57,7 @@ def isolate_object_select( objectToIsolate ):
     selectedObjects = bpy.context.selected_objects
     selectedMode = None
     
-    if bpy.context.object != None:
+    if bpy.context.object is not None:
         selectedMode = bpy.context.object.mode
     
     bpy.context.view_layer.objects.active = objectToIsolate
@@ -75,7 +71,7 @@ def getArmatureFromArmatureObject( armatureObject ):
     if type( armatureObject ) !=  bpy.types.Object:
         return None
     
-    if hasattr( armatureObject, 'data' ) != True:
+    if not hasattr( armatureObject, 'data' ):
         return None
     
     armature = armatureObject.data
@@ -100,7 +96,7 @@ def getSelectedVertices():
     return selectedVerticesIndexes, selectedVertices
 
 #TODO: Change this to use a passed in object. Also wtf is the vertices parameter used for???
-def createVertexGroup( vertices, name = 'Group' ):
+def createVertexGroup( name = 'Group' ):
     return bpy.context.selected_objects[0].vertex_groups.new( name = name )
 
 #If a bone has the same tail and head position it's automatically deleted. This prevents that from happening.
@@ -110,7 +106,7 @@ def ensureBoneSurvival( bone ):
 
 #vertexIndex = the index of the vertex within obj. This is the safest way to query these values
 def get_triangles_connected_to_vertex( vertexIndex, obj ):
-    if obj == None or isType( obj, 'MESH' ) != True or hasattr( obj, 'data' ) != True:
+    if obj is None or not isType( obj, 'MESH' ) or not hasattr( obj, 'data' ):
         return []
     
     mesh = obj.data
@@ -149,14 +145,16 @@ def getCenterOfVertices( verticesArr ):
     return vec
 
 #Takes all the selected vertices and calculates a normal based on the triangles connected to those vertices.
-def calcNormalOfVertices( vertexIndexes = [], obj = None ):
+def calcNormalOfVertices( vertexIndexes = None, obj = None ):
+    if vertexIndexes is None:
+        vertexIndexes = []
+    
     norms = []
     norm = mathutils.Vector( (0.0, 0.0, 0.0) )
     
     totalFaceCount = 0
     
     faces = []
-    faceCounter = []
     
     for vertexIndex in vertexIndexes:
         norms.append( mathutils.Vector( (0.0, 0.0, 0.0) ) )
@@ -204,10 +202,10 @@ def getSelectedBone():
     bone = None
     bones = bpy.context.selected_editable_bones
     
-    if bones == None:
+    if bones is None:
         bones = bpy.context.selected_pose_bones
     
-    if bones != None and len( bones ) != 0:
+    if bones is not None and len( bones ) != 0:
         bone = bones[0]
     
     return bone
@@ -220,17 +218,17 @@ def deleteBoneWithName( boneName, armatureObject ):
         bpy.ops.object.mode_set(mode = 'EDIT')
     
     armatureObject.data.edit_bones.remove( armatureObject.data.edit_bones[boneName] )
-   
-    if currentMode != None:
-       bpy.ops.object.mode_set( mode = currentMode )
 
-def getVerticesFromVertexGroupName( object, vertexGroupName ):
-    return [ vert for vert in object.data.vertices if object.vertex_groups[ vertexGroupName ].index in [ i.group for i in vert.groups ] ]
+    if currentMode is not None:
+        bpy.ops.object.mode_set( mode = currentMode )
+
+def getVerticesFromVertexGroupName( obj, vertexGroupName ):
+    return [ vert for vert in obj.data.vertices if obj.vertex_groups[ vertexGroupName ].index in [ i.group for i in vert.groups ] ]
 
 def isBone( checkedObject ):
     varType = type( checkedObject )
     
-    if checkedObject != None or ( varType != bpy.types.Bone and varType != bpy.types.PoseBone and varType != bpy.types.EditBone and varType != bpy.types.ConstraintTargetBone ):
+    if checkedObject is not None or ( varType != bpy.types.Bone and varType != bpy.types.PoseBone and varType != bpy.types.EditBone and varType != bpy.types.ConstraintTargetBone ):
         return True
     
     return False
@@ -245,7 +243,7 @@ def getArmatureObjectsFromArmature( armature ):
         if armatureType != bpy.types.Object:
             return None
         
-        if hasattr( armature, 'data' ) != True:
+        if not hasattr( armature, 'data' ):
             return None
         
         if type( armature.data ) != bpy.types.Armature:
@@ -254,9 +252,9 @@ def getArmatureObjectsFromArmature( armature ):
         return [ armature ]
     
     for scene in bpy.data.scenes:
-        for object in scene.objects:
-            if object.data == armature:
-                users.append( object )
+        for obj in scene.objects:
+            if obj.data == armature:
+                users.append( obj )
     
     if len( users ) == 0:
         return None
@@ -264,7 +262,7 @@ def getArmatureObjectsFromArmature( armature ):
     return users
 
 def getBonesArmature( bone ):
-    if isBone( bone ) != True:
+    if not isBone( bone ):
         return None, None
     
     armature = bone.id_data
@@ -286,7 +284,7 @@ def getEditBoneVersionOfBoneFromName( boneName, armatureObject ):
     return armatureObject.data.edit_bones[ boneName ]
 
 def getPoseBoneVersionOfBone( bone ):
-    if isBone( bone ) != True:
+    if not isBone( bone ):
         return None
     
     boneName = bone.name
@@ -294,13 +292,13 @@ def getPoseBoneVersionOfBone( bone ):
     
     armatureObjects = getArmatureObjectsFromArmature( armature )
     
-    if armatureObjects == None:
+    if armatureObjects is None:
         return None
     
     return getPoseBoneVersionOfBoneFromName( boneName, armatureObjects[0] )
 
 def ShowMessageBox( message = "", title = "Message Box", icon = 'INFO' ):
-    def draw( self, context ):
+    def draw( self ):
         self.layout.label( text = message )
     
     bpy.context.window_manager.popup_menu( draw, title = title, icon = icon )

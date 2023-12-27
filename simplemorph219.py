@@ -2,10 +2,13 @@
 import bpy
 from bpy.props import EnumProperty
 from bpy.types import Operator, Panel
-from bpy.utils import register_class, unregister_class
 
 import mathutils
-from mathutils import Euler
+
+from . import salowell_bpy_lib, realcorner219
+
+classes = [ realcorner219.SIMPLE_MORPH_219_REAL_CORNER_PT_panel, realcorner219.SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS ]
+bpy.utils.register_classes_factory(classes)
 
 class SIMPLE_MORPH_219_PT_panel( Panel ):
     bl_idname = 'SIMPLE_MORPH_219_PT_panel'
@@ -71,7 +74,7 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
             decompileBtn.enabled = False
     
     @staticmethod
-    def getSelectedVertices( context ):
+    def getSelectedVertices():
         return salowell_bpy_lib.getSelectedVertices()
 
 class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
@@ -92,7 +95,7 @@ class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
     )
     
     def execute( self, context ):
-        direction = anchorTail = mathutils.Vector( (0.0, 0.0, 0.0) )
+        direction = mathutils.Vector( (0.0, 0.0, 0.0) )
         
         if self.action == 'ALIGN_X_P':
             direction.x = 1.0
@@ -107,19 +110,19 @@ class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
         elif self.action == 'ALIGN_Z_M':
             direction.z = -1.0
             
-        self.align_controller( context = context , direction = direction)
+        self.align_controller( direction = direction)
         
         return { 'FINISHED' }
     
     @staticmethod
-    def align_controller( context , direction ):
+    def align_controller( direction ):
         bone = salowell_bpy_lib.getSelectedBone()
         
-        if bone == None:
+        if bone is None:
             salowell_bpy_lib.ShowMessageBox( "You must select a bone first.", "Notice:", "ERROR" )
             return
         
-        alignController( context, direction, bone)
+        alignController( direction, bone )
 
 class SIMPLE_MORPH_219_DECOMPILE_op( Operator ):
     bl_idname = 'simplemorph.219_decompile_op'
@@ -137,13 +140,13 @@ class SIMPLE_MORPH_219_DECOMPILE_op( Operator ):
         selectedObject = context.selected_objects[0]
         salowell_bpy_lib.isolate_object_select( selectedObject )
         
-        self.decompile( context, selectedObject )
+        self.decompile( selectedObject )
         
         return { 'FINISHED' }
     
     @staticmethod
-    def decompile( context, selectedObject ):
-        startDecompile( context, selectedObject )
+    def decompile( selectedObject ):
+        startDecompile( selectedObject )
 
 class SIMPLE_MORPH_219_op( Operator ):
     bl_idname = 'simplemorph.219_op'
@@ -166,7 +169,7 @@ class SIMPLE_MORPH_219_op( Operator ):
         if self.action == 'CREATE_CONTROLLER':
             self.create_controller( context = context )
         elif self.action == 'DELETE_CONTROLLER':
-            self.delete_controller( context = context )
+            self.delete_controller()
         elif self.action == 'SET_DEFORM':
             self.set_deform( context = context )
         elif self.action == 'FREEZE_COPY':
@@ -179,8 +182,8 @@ class SIMPLE_MORPH_219_op( Operator ):
         return { 'FINISHED' }
     
     @staticmethod
-    def delete_controller( context ):
-        startDeleteController( context )
+    def delete_controller():
+        startDeleteController()
     
     @staticmethod
     def create_controller( context ):
@@ -202,26 +205,14 @@ class SIMPLE_MORPH_219_op( Operator ):
     def reset_vertex_shapes( context ):
         startResetVertexShapes( context )
 
-classes = (SIMPLE_MORPH_219_PT_panel, SIMPLE_MORPH_219_op, SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op, SIMPLE_MORPH_219_DECOMPILE_op)
-
-register, unregister = bpy.utils.register_classes_factory(classes)
-
-from SimpleMorph219 import salowell_bpy_lib
-
-def register():
-    pass
-
-def unregister():
-    pass
-
-def alignController( context, direction, bone ):
+def alignController( direction, bone ):
     boneLength = 0.1
     bone = salowell_bpy_lib.getSelectedBone()
     
-    if bone == None:
+    if bone is None:
         return
     
-    if isinstance(direction, mathutils.Vector) != True:
+    if not isinstance(direction, mathutils.Vector):
         return
     
     direction.normalize()
@@ -244,10 +235,10 @@ def alignController( context, direction, bone ):
 #TODO: If you have another armature selected while trying to create a controller it will cause some nice fun little bugs. FIX THIS.
 #Create the armature on the passed in object if no armature exists
 #Returns the existing or newly created armature as well as whether or not[boolean] a new armature had to be created.
-def set_armature( object ):
+def set_armature( obj ):
     armature = None
     
-    for child in object.children:
+    for child in obj.children:
         armature = salowell_bpy_lib.getArmatureFromArmatureObject( child )
         
         if type( armature ) == bpy.types.Armature:
@@ -256,12 +247,11 @@ def set_armature( object ):
         armature = None
     
     newArmature = False
-    selectedObject = object
+    selectedObject = obj
     armatureObject = None
     
-    if armature == None:
+    if armature is None:
         newArmature = True
-        cont = bpy.context.area.type
         
         bpy.ops.object.mode_set( mode = 'OBJECT' )
         bpy.ops.object.armature_add( enter_editmode = False, align = 'WORLD', location = (0.0, 0.0, 0.0), scale = (1.0, 1.0, 1.0) )
@@ -269,7 +259,7 @@ def set_armature( object ):
         for armatureEntry in bpy.data.armatures:
             armatureEntrysObject = salowell_bpy_lib.getArmatureObjectsFromArmature( armatureEntry )
             #Again, we are only using the first object this armature is associated with. This plugin currently only uses a 1:1 link for armatures.
-            if armatureEntrysObject != None and len( armatureEntrysObject ) > 0 and armatureEntrysObject[0].select_get():
+            if armatureEntrysObject is not None and len( armatureEntrysObject ) > 0 and armatureEntrysObject[0].select_get():
                 armatureObject = armatureEntrysObject[0]
                 break
         
@@ -323,12 +313,10 @@ def createController( theObject ):
     
     anchorHead = salowell_bpy_lib.getCenterOfVertices( selectedVertices )
     
-    group = salowell_bpy_lib.createVertexGroup( selectedVerticesIndexes, 'Constraint' )
+    group = salowell_bpy_lib.createVertexGroup( 'Constraint' )
     group.add( selectedVerticesIndexes, 1.0, 'REPLACE' )
     
     armatureObject, armature, newArmature = set_armature( theObject )
-    
-    selectedObjects, selectedMode = salowell_bpy_lib.isolate_object_select( armatureObject )
     
     armature = armatureObject.data
     
@@ -339,9 +327,7 @@ def createController( theObject ):
     controllerPointName = controllerPoint.name
     basePointName = basePoint.name
     
-    norm, vertexNorms = salowell_bpy_lib.calcNormalOfVertices( selectedVerticesIndexes, theObject )
-    
-    triangles = salowell_bpy_lib.get_triangles_connected_to_vertex( selectedVerticesIndexes[0], theObject )
+    norm = salowell_bpy_lib.calcNormalOfVertices( selectedVerticesIndexes, theObject )[0]
     
     anchorTail = mathutils.Vector( (0.0, 0.0, 0.0) )
     anchorPoint.head = anchorHead
@@ -419,12 +405,12 @@ def createController( theObject ):
 def getBonesAnchorBone( bone ):
     anchorBone = None
     
-    if bone == None or ( type( bone ) != bpy.types.PoseBone and type( bone ) != bpy.types.EditBone and type( bone ) != bpy.types.Bone ):
+    if bone is None or ( type( bone ) != bpy.types.PoseBone and type( bone ) != bpy.types.EditBone and type( bone ) != bpy.types.Bone ):
         return None
     
     anchorBone = bone
     
-    while anchorBone.parent != None:
+    while anchorBone.parent is not None:
         anchorBone = anchorBone.parent
     
     return anchorBone
@@ -437,7 +423,7 @@ def getAllBonesOfController( bone ):
     baseBone = None
     controllerBone = None
     
-    if anchorBone != None:
+    if anchorBone is not None:
         for tmpBone in anchorBone.children:
             if len( tmpBone.children ) > 0:
                 baseBone = tmpBone
@@ -468,7 +454,7 @@ def getAllAnchorBones( armatureObject, boneType = 0):
         loopBoneType = armatureObject.data.bones
     
     for bone in loopBoneType:
-        if bone.parent == None:
+        if bone.parent is None:
             anchorBones.append( bone )
     
     return anchorBones
@@ -479,13 +465,13 @@ def getAllControllerBonesAsArrayHierarchy( armature ):
     anchorBones = getAllAnchorBones( armature, 1 )
     allBones = []
     
-    if anchorBones == None or len( anchorBones ) == 0:
+    if anchorBones is None or len( anchorBones ) == 0:
         return None
     
     for anchorBone in anchorBones:
         controllerBones = getAllBonesOfController( anchorBone )
         
-        if controllerBones != None and len( controllerBones ) != 0:
+        if controllerBones is not None and len( controllerBones ) != 0:
             allBones.append( controllerBones )
     
     if len( allBones ) == 0:
@@ -493,10 +479,10 @@ def getAllControllerBonesAsArrayHierarchy( armature ):
     
     return allBones
 
-def startDeleteController( context ):
+def startDeleteController():
     bone = salowell_bpy_lib.getSelectedBone()
     
-    if bone == None:
+    if bone is None:
         salowell_bpy_lib.ShowMessageBox( "You must select a bone first.", "Notice:", "ERROR" )
         return
     
@@ -505,7 +491,7 @@ def startDeleteController( context ):
     armature = anchorBone.id_data
     armatureObject = salowell_bpy_lib.getArmatureObjectsFromArmature( armature )[0]
     
-    if anchorBone != None:
+    if anchorBone is not None:
         poseAnchorBone = salowell_bpy_lib.getPoseBoneVersionOfBone( anchorBone )
         
         poseConstraints = poseAnchorBone.constraints
@@ -516,26 +502,26 @@ def startDeleteController( context ):
             if constraint.subtarget in armatureObject.parent.vertex_groups:
                 vertexGroup = armatureObject.parent.vertex_groups[ constraint.subtarget ]
             
-            if vertexGroup != None:
+            if vertexGroup is not None:
                 armatureObject.parent.vertex_groups.remove( vertexGroup )
         
         shapeKeyIndex = getShapeKeyIndexFromControllerBone( poseAnchorBone, armatureObject.parent )
         
-        if shapeKeyIndex != None:
+        if shapeKeyIndex is not None:
             armatureObject.parent.active_shape_key_index = shapeKeyIndex
             armatureObject.parent.shape_key_remove( armatureObject.parent.data.shape_keys.key_blocks[ shapeKeyIndex ] )
         
         salowell_bpy_lib.deleteBoneWithName( poseAnchorBone.name, armatureObject )
     
-    if reverserBone != None:
+    if reverserBone is not None:
         poseReverserBone = salowell_bpy_lib.getPoseBoneVersionOfBone( reverserBone )
         salowell_bpy_lib.deleteBoneWithName( poseReverserBone.name, armatureObject )
     
-    if baseBone != None:
+    if baseBone is not None:
         poseBaseBone = salowell_bpy_lib.getPoseBoneVersionOfBone( baseBone )
         salowell_bpy_lib.deleteBoneWithName( poseBaseBone.name, armatureObject )
     
-    if controllerBone != None:
+    if controllerBone is not None:
         poseControllerBone = salowell_bpy_lib.getPoseBoneVersionOfBone( controllerBone )
         salowell_bpy_lib.deleteBoneWithName( poseControllerBone.name, armatureObject )
 
@@ -547,7 +533,7 @@ def getControllersVertexGroupVertices( bone ):
     vertexGroupName = poseBoneVersion.constraints[0].subtarget
     
     bpy.ops.object.mode_set( mode = 'OBJECT' )
-    armatureObject, armature = salowell_bpy_lib.getBonesArmature( anchorBone )
+    armatureObject = salowell_bpy_lib.getBonesArmature( anchorBone )[0]
 #TODO: Currently defaulting to only the first object the Armature data block is being used by
     armatureObject = armatureObject[0]
     
@@ -576,7 +562,7 @@ def startCreateController( context ):
     else:
         salowell_bpy_lib.ShowMessageBox( "You must select the vertices, edges, or faces that represent an anchor point for the controller you wish to create.", "Notice:", "ERROR" )
 
-def setDeform( context, bone ):
+def setDeform( bone ):
     armature = None
     armatureObject = None
     parentObject = None
@@ -587,14 +573,14 @@ def setDeform( context, bone ):
     elif type( bone ) != bpy.types.EditBone:
         bone = bone.id_data.data.edit_bones[ bone.name ]
     
-    anchorBone, reverserBone, baseBone, controllerBone = getAllBonesOfController( bone )
+    anchorBone, _, _, controllerBone = getAllBonesOfController( bone )
     
     for scene in bpy.data.scenes:
-        for object in scene.objects:
-            if object.data == anchorBone.id_data:
-                armature = object.data
-                armatureObject = object
-                parentObject = object.parent
+        for obj in scene.objects:
+            if obj.data == anchorBone.id_data:
+                armature = obj.data
+                armatureObject = obj
+                parentObject = obj.parent
                 break
     
     allBonesHierarchy = getAllControllerBonesAsArrayHierarchy(armature)
@@ -605,14 +591,14 @@ def setDeform( context, bone ):
         
         contBone.location = anchorBone.location
     
-    if parentObject.data.shape_keys == None or len( parentObject.data.shape_keys.key_blocks ) == 0:
+    if parentObject.data.shape_keys is None or len( parentObject.data.shape_keys.key_blocks ) == 0:
         sk_basis = parentObject.shape_key_add( name = 'Basis' )
         sk_basis.interpolation = 'KEY_LINEAR'
         parentObject.data.shape_keys.use_relative = True
     
     shapeKeyIndex = getShapeKeyIndexFromControllerBone( controllerBone, parentObject )
     
-    if shapeKeyIndex == None:
+    if shapeKeyIndex is None:
         shapeKey = parentObject.shape_key_add( name = 'Key' )
         shapeKey.interpolation = 'KEY_LINEAR'
         shapeKey.slider_max = 10.0
@@ -631,7 +617,7 @@ def setDeform( context, bone ):
         
         shapeKeyIndex = getShapeKeyIndexFromControllerBone( controllerBone, parentObject )
     
-    if shapeKeyIndex != None:
+    if shapeKeyIndex is not None:
         parentObject.active_shape_key_index = shapeKeyIndex
         bpy.ops.object.mode_set( mode = 'OBJECT' )
         salowell_bpy_lib.isolate_object_select( parentObject )
@@ -639,10 +625,10 @@ def setDeform( context, bone ):
         parentObject.data.shape_keys.key_blocks[ shapeKeyIndex ].value = parentObject.data.shape_keys.key_blocks[ 'Basis' ].value
 
 def getShapeKeyIndexFromControllerBone( bone, parentObject ):
-    if parentObject.data.shape_keys.animation_data == None:
+    if parentObject.data.shape_keys.animation_data is None:
         return None
     
-    anchorBone, reverserBone, baseBone, controllerBone = getAllBonesOfController( bone )
+    controllerBone = getAllBonesOfController( bone )[3]
     shapeKeyIndex = None
     
     shapeKeysPathIds = []
@@ -663,9 +649,9 @@ def startResetVertexShapes( context ):
     
     bpy.ops.object.mode_set( mode = 'OBJECT', toggle = True )
     
-    selectedVerticesIndexes, selectedVertices = salowell_bpy_lib.getSelectedVertices()
+    selectedVerticesIndexes = salowell_bpy_lib.getSelectedVertices()[0]
     
-    if bpy.context.active_object.active_shape_key != None and len( selectedVerticesIndexes ) != 0:
+    if bpy.context.active_object.active_shape_key is not None and len( selectedVerticesIndexes ) != 0:
         bpy.ops.mesh.blend_from_shape( shape = 'Basis', blend = 1.0, add = False )
     
     salowell_bpy_lib.isolate_object_select( selectedObject )
@@ -685,7 +671,7 @@ def startFreezeCopy( context ):
                 parentObject = child
                 break
     
-    if parentObject == None:
+    if parentObject is None:
         return
     
     salowell_bpy_lib.isolate_object_select( parentObject )
@@ -723,18 +709,18 @@ def startCompile( context ):
     for child in selectedObject.children:
         childArmature = salowell_bpy_lib.getArmatureFromArmatureObject( child )
         
-        if childArmature != None:
+        if childArmature is not None:
             armatureObject = child
             break
     
-    if armatureObject != None:
+    if armatureObject is not None:
         salowell_bpy_lib.isolate_object_select( armatureObject )
         bpy.ops.object.delete()
         salowell_bpy_lib.isolate_object_select( selectedObject )
     
     salowell_bpy_lib.unwrapObjectUV( selectedObject )
 
-def startDecompile( context, selectedObject ):
+def startDecompile( selectedObject ):
     foundNewObject = False
     newObject = None
     newArmatureObject = None
@@ -745,18 +731,18 @@ def startDecompile( context, selectedObject ):
             foundNewObject = True
             break
     
-    if foundNewObject == False:
+    if foundNewObject is False:
         salowell_bpy_lib.ShowMessageBox( "You must select an object that has been previously compiled by Simple Morph 219. (Object not found)", "Notice:", "ERROR" )
         return
     
     for child in newObject.children:
         newArmature = salowell_bpy_lib.getArmatureFromArmatureObject( child )
         
-        if newArmature != None:
+        if newArmature is not None:
             newArmatureObject = child
             break
     
-    if newArmatureObject == None:
+    if newArmatureObject is None:
         salowell_bpy_lib.ShowMessageBox( "You must select an object that has been previously compiled by Simple Morph 219. (Armature object not found)", "Notice:", "ERROR" )
         return
     
@@ -771,7 +757,7 @@ def startDecompile( context, selectedObject ):
     newObjectPosition.z = selectedObject.location.z
     newObject.location = newObjectPosition
     
-    newObjectRotation = Euler((0.0, 0.0, 0.0), 'XYZ')
+    #TODO: Add random rotation to the UV
     newObjectPosition.x = selectedObject.rotation_euler.x
     newObjectPosition.y = selectedObject.rotation_euler.y
     newObjectPosition.z = selectedObject.rotation_euler.z
@@ -802,27 +788,27 @@ def startSetDeform( context ):
     armatureParentObject = None
     
     for scene in bpy.data.scenes:
-        for object in scene.objects:
-            if object == selectedObject:
-                armatureParentObject = object
+        for obj in scene.objects:
+            if obj == selectedObject:
+                armatureParentObject = obj
                 break
         
-        if armatureParentObject != None:
+        if armatureParentObject is not None:
             break
     
-    if armatureParentObject == None:
+    if armatureParentObject is None:
         return
     
     bpy.ops.object.mode_set( mode = mode )
     bone = None
     
-    if context.selected_pose_bones != None and len( context.selected_pose_bones ) > 0:
+    if context.selected_pose_bones is not None and len( context.selected_pose_bones ) > 0:
         bone = context.selected_pose_bones[0]
     
-    if context.selected_bones != None and len( context.selected_bones ) > 0:
+    if context.selected_bones is not None and len( context.selected_bones ) > 0:
         bone = context.selected_bones[0]
     
-    if bone == None:
+    if bone is None:
         return
     
-    setDeform( context = context, bone = bone )
+    setDeform( bone = bone )

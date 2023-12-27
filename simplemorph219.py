@@ -274,6 +274,8 @@ def set_armature( obj ):
 #Creates all the bones needed for a controller point. No settings are applied here.
 #Returns all 4 of the bones
 def createControllerBones( armature, useExistingBone ):
+    armatureObject = salowell_bpy_lib.getArmatureObjectsFromArmature( armature )[0]
+    salowell_bpy_lib.isolate_object_select( armatureObject )
     bpy.ops.object.mode_set( mode = 'EDIT' )
     
     editBones = armature.edit_bones

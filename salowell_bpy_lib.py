@@ -16,7 +16,7 @@ def unwrapObjectUV( objectToUnwrap ):
     
     lm =  objectToUnwrap.data.uv_layers.get( 'UVMap' )
     if not lm:
-        lm = obj.data.uv_layers.new( name = 'UVMap' )
+        lm = objectToUnwrap.data.uv_layers.new( name = 'UVMap' )
     
     lm.active = True
     

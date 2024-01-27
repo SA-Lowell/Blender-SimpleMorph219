@@ -1,5 +1,9 @@
+from ctypes import Array
+
 import random
+
 import bpy
+import bmesh
 import mathutils
 
 def unwrapObjectUV( objectToUnwrap ):
@@ -61,11 +65,264 @@ def isolate_object_select( objectToIsolate ):
         selectedMode = bpy.context.object.mode
     
     bpy.context.view_layer.objects.active = objectToIsolate
-    bpy.ops.object.mode_set( mode = 'OBJECT' )
+    
+    if bpy.context.object.mode != 'OBJECT':
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
+    
     bpy.ops.object.select_all( action = 'DESELECT' )
     objectToIsolate.select_set( True )
     
     return selectedObjects, selectedMode
+
+class SimpleMorph219BlenderState:
+    selected_objects:Array = []
+    mode:str = ''
+    
+    def __init__( self ) -> None:
+        self.set_this_to_current_blender_state()
+    
+    def set_this_to_current_blender_state( self ) -> None:
+        self.mode = bpy.context.object.mode
+        self.selected_objects = []
+        
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
+        
+        for obj in bpy.context.selected_objects:
+            self.selected_objects.append(obj.name)
+        
+        self.set_blender_state_to_this()
+    
+    def set_blender_state_to_this( self ) -> None:
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
+        bpy.ops.object.select_all( action = 'DESELECT' )
+        
+        for obj_name in self.selected_objects:
+            bpy.context.scene.objects[ obj_name ].select_set( True )
+        
+        bpy.ops.object.mode_set( mode = self.mode )
+
+#TODO: This function is only retrieving one face but it should be retrieving 2 faces each time....
+def get_all_selected_faces_of_edge( obj, edge) -> Array:
+    owner_faces:Array = []
+    
+    mesh = obj.data
+    found_first:bool = False
+    
+    for face in mesh.polygons:
+        found_first = False
+        if not face in owner_faces and face.select:
+            for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
+                if value == edge.vertices[0] or value == edge.vertices[1]:
+                    if found_first:
+                        owner_faces.append(face)
+                        break
+                    
+                    found_first = True
+    
+    return owner_faces
+
+def get_edge_index_from_polygon_list(mesh:bpy.types.Mesh, polygonList:Array, vertex1:int, vertex2:int) -> int:
+    edge_index:int = -1
+    
+    if mesh is not None:
+        for polygonIndex in polygonList:
+            for edge in mesh.polygons[polygonIndex].edge_keys:
+                if ( edge[0] == vertex1 and edge[1] == vertex2 ) or ( edge[0] == vertex2 and edge[1] == vertex1 ):
+                    edge_index = edge.index
+                    break
+    
+    return edge_index
+
+def get_edge_index_from_vertex_indexes(mesh:bpy.types.Mesh, vertex1:int, vertex2:int) -> int:
+    edge_index:int = -1
+    
+    if mesh is not None:
+        for edge in mesh.edges:
+            if ( edge.vertices[0] == vertex1 and edge.vertices[1] == vertex2 ) or ( edge.vertices[0] == vertex2 and edge.vertices[1] == vertex1 ):
+                edge_index = edge.index
+                break
+    
+    return edge_index
+
+def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> Array:
+    """
+    Used to map a mesh's edge_keys to its MeshEdge objects
+
+    Parameters
+    ----------
+    mesh : bpy.types.Mesh, Object.data
+        The Mesh you want to map the edge_keys for
+
+    selected_only : bool, default False
+        Whether this should map all edges or only the currently selected edges.
+    
+    Returns
+    -------
+        [
+            MeshPolygon.edge_keys[0] => MeshEdge,
+            ...,
+            MeshPolygon.edge_keys[n] => MeshEdge,
+        ]
+    """
+    if selected_only:
+        return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys) if mesh.edges[i].select}
+    
+    return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
+
+def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
+    """
+    Gets the outer and inner edges of every group of selected faces.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The object with a bpy.types.Mesh that contains selected faces.
+
+    Returns
+    -------
+        An array of all the selected outer and inner edges separated into selection groups and loops within that selection group.
+        [ ALL
+            [ FACE SELECTION GROUP 1
+                [ OUTER EDGES
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                [ INNER EDGES 1
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                [ INNER EDGES 2
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                ... EDGE n
+            ],
+            [ FACE SELECTION GROUP 2
+                [ OUTER EDGES
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                [ INNER EDGES 1
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                [ INNER EDGES 2
+                    bpy.types.MeshEdge,
+                    ...
+                ],
+                ... EDGE n
+            ],
+            ... FACE SELECTION GROUP n
+        ]
+    """
+    face_groups:Array = get_grouped_selected_faces( obj )
+    bounding_edges:Array = []
+    edge_key_edges = map_edge_keys_to_edges(obj.data, True)
+    
+    processed_faces:Array = []
+    processed_edges:Array = []
+    
+    for face_group_index, face_group in enumerate(face_groups):
+        bounding_edges.append([])
+        for face in face_group:
+            if not face in processed_faces:
+                processed_faces.append(face)
+                
+                for edge_key in face.edge_keys:
+                    edge = edge_key_edges[edge_key]
+                    if not edge in processed_edges:
+                        processed_edges.append(edge)
+                        
+                        edges_faces = get_all_selected_faces_of_edge( obj, edge )
+                        
+                        if len(edges_faces) == 1:
+                            bounding_edges[ face_group_index ].append(edge)
+    
+    bounding_edges_grouped:Array = []
+    processed_edges:Array = []
+    
+    for bounding_edges_index, bounding_edges_group in enumerate(bounding_edges):
+        bounding_edges_grouped.append([])
+        unprocessed_linked_edges:Array = []
+        bounding_edges_sub_group:int = -1
+        add_new_sub_group:bool = True
+        
+        while len(bounding_edges_group) != 0:
+            unprocessed_edge = bounding_edges_group.pop()
+            
+            if add_new_sub_group:
+                bounding_edges_sub_group += 1
+                bounding_edges_grouped[bounding_edges_index].append([])
+                bounding_edges_grouped[bounding_edges_index][bounding_edges_sub_group] = []
+                add_new_sub_group = False
+            
+            if unprocessed_edge not in processed_edges:
+                unprocessed_linked_edges.append(unprocessed_edge)
+            
+            while len( unprocessed_linked_edges ) != 0:
+                add_new_sub_group = True
+                processing_edge = unprocessed_linked_edges.pop()
+                processed_edges.append(processing_edge)
+                bounding_edges_grouped[bounding_edges_index][bounding_edges_sub_group].append(processing_edge)
+
+                for index, edge in enumerate(bounding_edges_group):
+                    if edge.vertices[0] == processing_edge.vertices[0] or edge.vertices[1] == processing_edge.vertices[1] or edge.vertices[1] == processing_edge.vertices[0] or edge.vertices[0] == processing_edge.vertices[1]:
+                        if edge not in processed_edges:
+                            unprocessed_linked_edges.append(edge)
+                        
+                        bounding_edges_group.pop(index)
+
+    return bounding_edges_grouped
+    
+#TODO: THIS IS WAY TOO SLOW! For the love of god optimize this.
+def get_grouped_selected_faces( obj ) -> Array:
+    selected_face_groups:Array = []
+    
+    if type( obj ) is bpy.types.Object:
+        obj_name = obj.name
+        obj = bpy.context.scene.objects[ obj_name ]
+        
+        isolate_object_select( obj )
+        selected_faces:Array = getObjectSelectedFaces( obj )
+        polygon_group_index:int = 0
+        selected_face_groups.append([])
+        
+        if len( selected_faces[1] ) > 0:
+            edge_key_edges = map_edge_keys_to_edges(obj.data, True)
+            
+            polygons_completed:Array = []
+            edge_keys_completed:Array = []
+            
+            for edge_key in  edge_key_edges :
+                if not edge_key in edge_keys_completed:
+                    start_new_group = False
+                    edge_keys_completed.append(edge_key)
+                    polygons:Array = get_all_selected_faces_of_edge( obj, edge_key_edges[edge_key] )
+                    
+                    while len(polygons) > 0:
+                        polygon_index = polygons.pop()
+                        
+                        if polygon_index.select and not polygon_index in polygons_completed:
+                            polygons_completed.append(polygon_index)
+                            
+                            for edge_key2 in polygon_index.edge_keys:
+                                if not edge_key2 in edge_keys_completed:
+                                    edge_keys_completed.append(edge_key2)
+                                    polygons2:Array = get_all_selected_faces_of_edge( obj, edge_key_edges[edge_key2] )
+                                    
+                                    for polygon_index2 in polygons2:
+                                        if polygon_index2.select and not polygon_index2 in polygons_completed and not polygon_index2 in polygons :
+                                            polygons.append(polygon_index2)
+                                    if polygon_index.select and not polygon_index in selected_face_groups[polygon_group_index]:
+                                        start_new_group = True
+                                        selected_face_groups[polygon_group_index].append(polygon_index)
+                    
+                    if start_new_group:
+                        polygon_group_index += 1
+                        selected_face_groups.append([])
+    
+    selected_face_groups.pop()
+    return selected_face_groups
 
 def getArmatureFromArmatureObject( armatureObject ):
     if type( armatureObject ) !=  bpy.types.Object:
@@ -233,7 +490,6 @@ def isBone( checkedObject ):
     
     return False
 
-#TESTED
 #pass in an armature object or armature and you will get the armature in return.
 def getArmatureObjectsFromArmature( armature ):
     armatureType = type( armature )
@@ -270,6 +526,60 @@ def getBonesArmature( bone ):
     armatureObject = getArmatureObjectsFromArmature( armature )
     
     return armatureObject, armature
+
+def getMeshSelectedEdges( mesh ):
+    mode = bpy.context.object.mode
+    bpy.ops.object.mode_set( mode = 'OBJECT' )
+    obj:object = mesh.id_data
+    mesh = obj.data
+    
+    selectedEdgeIndexes = []
+    selectedEdgeObjs = []
+    
+    if type( mesh ) == bpy.types.Mesh:
+        for edge in mesh.edges:
+            if edge.select:
+                selectedEdgeIndexes.append(edge.index)
+                selectedEdgeObjs.append(edge)
+    
+    bpy.ops.object.mode_set( mode = mode )
+    
+    return selectedEdgeObjs, selectedEdgeIndexes
+
+def getBmeshSelectedEdges(bm):
+    selectedEdgeIndexes = []
+    selectedEdgeObjs = []
+    edges = bm.edges
+    
+    for edge in edges:
+        if edge.select:
+            selectedEdgeIndexes.append(edge.index)
+            selectedEdgeObjs.append(edge)
+    
+    return selectedEdgeObjs, selectedEdgeIndexes
+
+def getObjectSelectedFaces( obj ) -> Array:
+    selected_faces:Array = []
+    
+    if type( obj ) is bpy.types.Object:
+        mesh:bpy.types.Mesh = obj.data
+        bm:bmesh = bmesh.new()
+        bm.from_mesh(mesh)
+        selected_faces = getBmeshSelectedFaces( bm )
+    
+    return selected_faces
+
+def getBmeshSelectedFaces(bm):
+    selectedFaceIndexes = []
+    selectedFaceObjs = []
+    faces = bm.faces
+    
+    for face in faces:
+        if face.select:
+            selectedFaceIndexes.append(face.index)
+            selectedFaceObjs.append(face)
+
+    return selectedFaceObjs, selectedFaceIndexes
 
 def getBoneVersionOfBoneFromName( boneName, armatureObject ):
     return armatureObject.data.bones[ boneName ]

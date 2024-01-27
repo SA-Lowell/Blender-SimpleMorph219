@@ -1,11 +1,14 @@
 #TODO: Write a function that normalizes the bone controllers: Deletes invalid bones, deletes unused constraints and keys, etc etc????
 import bpy
 from bpy.props import EnumProperty
-from bpy.types import Operator, Panel
+from bpy.types import Operator, Panel, Object
 
 import mathutils
 
 from . import salowell_bpy_lib, realcorner219
+
+#Used to identify if this object  is a Simple Morph object.
+simpleMorph219BaseName = 'simpleMorph219_Base'
 
 classes = [ realcorner219.SIMPLE_MORPH_219_REAL_CORNER_PT_panel, realcorner219.SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS ]
 bpy.utils.register_classes_factory(classes)
@@ -814,3 +817,20 @@ def startSetDeform( context ):
         return
     
     setDeform( bone = bone )
+
+def markObjectAsSimpleMorphBaseObject( obj ):
+    if len( realcorner219.getAllRealCornerCustomPropKeys( obj ) ) == 0:
+        realcorner219.createNewRealCornerCustomProperty( obj, realcorner219.realCorner219PropName )
+    obj[ simpleMorph219BaseName ] = True
+
+def isSimpleMorphBaseObject( obj ):
+    if type( obj ) is not Object:
+        return False
+    
+    return simpleMorph219BaseName in obj and type( obj[ simpleMorph219BaseName ] ) is bool and obj[ simpleMorph219BaseName ]
+
+def isSimpleMorphTempBaseObject( obj ):
+    if type( obj ) is not Object:
+        return False
+    
+    return simpleMorph219BaseName in obj and type( obj[ simpleMorph219BaseName ] ) is bool and not obj[ simpleMorph219BaseName ]

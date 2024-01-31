@@ -1,3 +1,5 @@
+from ctypes import Array
+
 from enum import Enum
 
 import bpy
@@ -7,6 +9,7 @@ from bpy.props import ( BoolProperty, EnumProperty, FloatProperty, IntProperty, 
 from bpy.utils import register_class, unregister_class
 
 import bmesh
+import mathutils
 
 from . import salowell_bpy_lib, simplemorph219
 
@@ -149,6 +152,95 @@ bpy.types.Scene.realCorner219Layers:bpy.props.EnumProperty = bpy.props.EnumPrope
     update = real_corner_changed_selected_layer
 )
 
+def createSupportingEdgeLoopsAroundSelectedFaces( obj, supporting_edge_loop_length:float = 0.01 ) -> None:
+    initial_selected_face_indexes = salowell_bpy_lib.get_selected_faces( obj )[1]
+    bounding_edges_indexes:Array = salowell_bpy_lib.get_bounding_edges_of_selected_face_groups( bpy.context.selected_objects[0] )[1]
+
+    for face_group in bounding_edges_indexes:
+        for edge_group in face_group:
+            for edge in edge_group:
+                bpy.ops.object.mode_set( mode = 'EDIT')
+                bpy.ops.mesh.select_all( action = 'DESELECT' )
+                salowell_bpy_lib.select_faces( obj, initial_selected_face_indexes )
+                
+                unselected_faces_of_bounding_edge:Array = salowell_bpy_lib.get_faces_touching_edge( bpy.context.selected_objects[0], bpy.context.selected_objects[0].data.edges[ edge ], -1 )[1]
+                
+                edges_to_split:Array = []
+                source_vertex:Array = []
+                
+                #Looping through both vertices of this bounding edge.
+                for vertex in bpy.context.selected_objects[0].data.edges[ edge ].vertices:
+                    bpy.ops.object.mode_set( mode = 'EDIT')
+                    bpy.ops.mesh.select_all( action = 'DESELECT' )
+                    salowell_bpy_lib.select_faces( obj, initial_selected_face_indexes )
+                    #When selecting the faces, if we don't toggle back to edit then object mode the faces will be selected but the edges will not be!! Blender plz
+                    bpy.ops.object.mode_set( mode = 'EDIT')
+                    bpy.ops.object.mode_set( mode = 'OBJECT')
+                    
+                    edges_of_vertex = salowell_bpy_lib.get_edge_indexes_from_vertex_index( bpy.context.selected_objects[0].data, vertex, -1 )
+                    
+                    #Looping through the unbeveled edges connected to one of the vertices of this bounding edge.
+                    for edge_of_vertex in edges_of_vertex:
+                        unselected_faces_touching_unbeveled_edge = salowell_bpy_lib.get_faces_touching_edge( bpy.context.selected_objects[0], bpy.context.selected_objects[0].data.edges[ edge_of_vertex ], -1 )[1]
+                        
+                        for unselected_face_touching_unbeveled_edge in unselected_faces_touching_unbeveled_edge:
+                            if unselected_face_touching_unbeveled_edge in unselected_faces_of_bounding_edge:
+                                #Found the edge that is touching the same face as the outer bounding edge.
+                                edges_to_split.append( edge_of_vertex )
+                                source_vertex.append( vertex )
+                
+                verts_to_join:Array = []
+                
+                for edge_to_split_index, edge_to_split in enumerate( edges_to_split ):
+                    source_vertex_index:int = 0
+                    destination_vertex_index:int = 1
+                    
+                    if bpy.context.selected_objects[0].data.edges[ edge_to_split ].vertices[1] == source_vertex[ edge_to_split_index ]:
+                        source_vertex_index:int = 1
+                        destination_vertex_index:int = 0
+                    
+                    bpy.context.selected_objects[0].data.edges[ edge_to_split ]
+                    length = mathutils.Vector( bpy.context.selected_objects[0].data.vertices[ destination_vertex_index ].co - bpy.context.selected_objects[0].data.vertices[ source_vertex_index ].co ).length
+                    
+                    if length <= supporting_edge_loop_length:
+                        verts_to_join.append( bpy.context.selected_objects[0].data.edges[ edge_to_split ].vertices[ destination_vertex_index ] )
+                    else:
+                        pre_split_edge = bpy.context.selected_objects[0].data.edges[ edge_to_split ]
+                        bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ destination_vertex_index ] ].co
+                        move_vector:vertex = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ destination_vertex_index ] ].co - bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ source_vertex_index ] ].co
+                        move_vector.normalize()
+                        new_vertex_position = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ source_vertex_index ] ].co + move_vector * supporting_edge_loop_length
+                        source_vertex_index_id = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ source_vertex_index ] ].index
+                        destination_vertex_index_id = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ destination_vertex_index ] ].index
+                        bpy.ops.object.mode_set( mode = 'EDIT')
+                        bpy.ops.mesh.select_all( action = 'DESELECT' )
+                        bpy.ops.object.mode_set( mode = 'OBJECT')
+                        
+                        bpy.context.selected_objects[0].data.edges[ edge_to_split ].select = True
+                        
+                        bpy.ops.object.mode_set( mode = 'EDIT' )
+                        bpy.ops.mesh.subdivide( number_cuts = 1 )
+                        bpy.ops.object.mode_set( mode = 'OBJECT')
+                        
+                        split_vertices_indexes = [ v for v in bpy.context.selected_objects[0].data.vertices if v.select ]
+                        split_edges = [ e.index for e in bpy.context.selected_objects[0].data.edges if e.select ]
+                        
+                        for split_vertex in split_vertices_indexes:
+                            if split_vertex.index != source_vertex_index_id and split_vertex.index != destination_vertex_index_id:
+                                split_vertex.co = new_vertex_position
+                                verts_to_join.append( split_vertex.index )
+                                break
+                
+                bpy.ops.object.mode_set( mode = 'EDIT' )
+                bpy.ops.mesh.select_all( action = 'DESELECT' )
+                bpy.ops.object.mode_set( mode = 'OBJECT' )
+                
+                for vert_to_join_index in verts_to_join:
+                    bpy.context.selected_objects[0].data.vertices[ vert_to_join_index ].select = True
+                
+                bpy.ops.object.mode_set( mode = 'EDIT' )
+                bpy.ops.mesh.vert_connect_path()
+
 class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
     bl_idname = 'realcorner219.real_corner_quickops_op'
     bl_label = 'Real Corner 219 - Quick Operators'
@@ -167,7 +259,8 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked
         
         if self.action == 'TEST':
-            salowell_bpy_lib.get_bounding_edges_of_selected_face_groups( bpy.context.selected_objects[0] )
+            supporting_edge_loop_length:float = 0.02
+            createSupportingEdgeLoopsAroundSelectedFaces( bpy.context.selected_objects[0], supporting_edge_loop_length )
             
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':
@@ -634,7 +727,7 @@ def realcorner219HandleSelectDeselect_2( scene ) -> None:
     
     if not simplemorph219.simpleMorph219BaseName in obj:
         return None
-
+    
     if not scene.realCorner219Layers in obj:
         scene.realCorner219Layers = realCorner219PropName + '0'
     

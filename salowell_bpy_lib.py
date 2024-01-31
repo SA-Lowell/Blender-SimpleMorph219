@@ -102,24 +102,54 @@ class SimpleMorph219BlenderState:
         bpy.ops.object.mode_set( mode = self.mode )
 
 #TODO: This function is only retrieving one face but it should be retrieving 2 faces each time....
-def get_all_selected_faces_of_edge( obj, edge) -> Array:
+def get_faces_touching_edge( obj, edge, select_state:int = 0 ) -> Array:
     owner_faces:Array = []
+    owner_faces_indexes:Array = []
     
     mesh = obj.data
     found_first:bool = False
     
-    for face in mesh.polygons:
-        found_first = False
-        if not face in owner_faces and face.select:
-            for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
-                if value == edge.vertices[0] or value == edge.vertices[1]:
-                    if found_first:
-                        owner_faces.append(face)
-                        break
-                    
-                    found_first = True
+    if select_state == 1:
+        for face in mesh.polygons:
+            found_first = False
+            
+            if not face in owner_faces and face.select:
+                for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
+                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
+    elif select_state == -1:
+        for face in mesh.polygons:
+            found_first = False
+            
+            if not face in owner_faces and not face.select:
+                for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
+                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
+    else:
+        for face in mesh.polygons:
+            found_first = False
+            
+            if not face in owner_faces:
+                for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
+                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
     
-    return owner_faces
+    return owner_faces, owner_faces_indexes
 
 def get_edge_index_from_polygon_list(mesh:bpy.types.Mesh, polygonList:Array, vertex1:int, vertex2:int) -> int:
     edge_index:int = -1
@@ -143,6 +173,49 @@ def get_edge_index_from_vertex_indexes(mesh:bpy.types.Mesh, vertex1:int, vertex2
                 break
     
     return edge_index
+
+def get_edge_indexes_from_vertex_index( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 ) -> int:
+    """
+    Retrieves the indexes of every single edge connected to the input vertex index.
+
+    Parameters
+    ----------
+    mesh: bpy.types.Mesh, Object.data
+        The Mesh you want to retrieve vertices from
+
+    vertex: int
+        The ID/Index of the vertex
+    
+    select : int, default 0
+        Types of edges to return
+            0 = all,
+            1 = selected only,
+            -1 = unselected only
+    
+    Returns
+    -------
+        An array of indexes for each edge that is connected to the input vertex.
+    """
+    select_state = -1 if select_state < -1 else select_state
+    select_state = 1 if select_state > 1 else select_state
+    
+    edge_indexes:Array = []
+    
+    if mesh is not None:
+        if select_state == 0:
+            for edge in mesh.edges:
+                if edge.vertices[0] == vertex or edge.vertices[1] == vertex:
+                    edge_indexes.append( edge.index )
+        elif select_state == 1:
+            for edge in mesh.edges:
+                if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and edge.select:
+                    edge_indexes.append( edge.index )
+        else:
+            for edge in mesh.edges:
+                if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and not edge.select:
+                    edge_indexes.append( edge.index )
+    
+    return edge_indexes
 
 def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> Array:
     """
@@ -233,16 +306,18 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
                     if not edge in processed_edges:
                         processed_edges.append(edge)
                         
-                        edges_faces = get_all_selected_faces_of_edge( obj, edge )
+                        edges_faces = get_faces_touching_edge( obj, edge, 1 )[0]
                         
                         if len(edges_faces) == 1:
-                            bounding_edges[ face_group_index ].append(edge)
+                            bounding_edges[ face_group_index ].append( edge )
     
     bounding_edges_grouped:Array = []
+    bounding_edges_grouped_index:Array = []
     processed_edges:Array = []
     
-    for bounding_edges_index, bounding_edges_group in enumerate(bounding_edges):
+    for bounding_edges_index, bounding_edges_group in enumerate( bounding_edges ):
         bounding_edges_grouped.append([])
+        bounding_edges_grouped_index.append([])
         unprocessed_linked_edges:Array = []
         bounding_edges_sub_group:int = -1
         add_new_sub_group:bool = True
@@ -252,27 +327,30 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
             
             if add_new_sub_group:
                 bounding_edges_sub_group += 1
-                bounding_edges_grouped[bounding_edges_index].append([])
-                bounding_edges_grouped[bounding_edges_index][bounding_edges_sub_group] = []
+                bounding_edges_grouped[ bounding_edges_index ].append([])
+                bounding_edges_grouped[ bounding_edges_index ][ bounding_edges_sub_group ] = []
+                bounding_edges_grouped_index[ bounding_edges_index ].append([])
+                bounding_edges_grouped_index[ bounding_edges_index][ bounding_edges_sub_group ] = []
                 add_new_sub_group = False
             
             if unprocessed_edge not in processed_edges:
-                unprocessed_linked_edges.append(unprocessed_edge)
+                unprocessed_linked_edges.append( unprocessed_edge )
             
             while len( unprocessed_linked_edges ) != 0:
                 add_new_sub_group = True
                 processing_edge = unprocessed_linked_edges.pop()
-                processed_edges.append(processing_edge)
-                bounding_edges_grouped[bounding_edges_index][bounding_edges_sub_group].append(processing_edge)
+                processed_edges.append( processing_edge )
+                bounding_edges_grouped[ bounding_edges_index ][ bounding_edges_sub_group ].append( processing_edge )
+                bounding_edges_grouped_index[ bounding_edges_index ][ bounding_edges_sub_group ].append( processing_edge.index )
 
-                for index, edge in enumerate(bounding_edges_group):
+                for index, edge in enumerate( bounding_edges_group ):
                     if edge.vertices[0] == processing_edge.vertices[0] or edge.vertices[1] == processing_edge.vertices[1] or edge.vertices[1] == processing_edge.vertices[0] or edge.vertices[0] == processing_edge.vertices[1]:
                         if edge not in processed_edges:
-                            unprocessed_linked_edges.append(edge)
+                            unprocessed_linked_edges.append( edge )
                         
-                        bounding_edges_group.pop(index)
+                        bounding_edges_group.pop( index )
 
-    return bounding_edges_grouped
+    return bounding_edges_grouped, bounding_edges_grouped_index
     
 #TODO: THIS IS WAY TOO SLOW! For the love of god optimize this.
 def get_grouped_selected_faces( obj ) -> Array:
@@ -297,7 +375,7 @@ def get_grouped_selected_faces( obj ) -> Array:
                 if not edge_key in edge_keys_completed:
                     start_new_group = False
                     edge_keys_completed.append(edge_key)
-                    polygons:Array = get_all_selected_faces_of_edge( obj, edge_key_edges[edge_key] )
+                    polygons:Array = get_faces_touching_edge( obj, edge_key_edges[edge_key], 1 )[0]
                     
                     while len(polygons) > 0:
                         polygon_index = polygons.pop()
@@ -308,7 +386,7 @@ def get_grouped_selected_faces( obj ) -> Array:
                             for edge_key2 in polygon_index.edge_keys:
                                 if not edge_key2 in edge_keys_completed:
                                     edge_keys_completed.append(edge_key2)
-                                    polygons2:Array = get_all_selected_faces_of_edge( obj, edge_key_edges[edge_key2] )
+                                    polygons2:Array = get_faces_touching_edge( obj, edge_key_edges[edge_key2], 1 )[0]
                                     
                                     for polygon_index2 in polygons2:
                                         if polygon_index2.select and not polygon_index2 in polygons_completed and not polygon_index2 in polygons :
@@ -361,8 +439,24 @@ def ensureBoneSurvival( bone ):
     if bone.head.x == bone.tail.x and bone.head.y == bone.tail.y and bone.head.z == bone.tail.z:
         bone.tail.z += 1.0
 
+def get_selected_faces( obj ):
+    selected_faces:Array = []
+    selected_face_indexes:Array = []
+    
+    for face in obj.data.polygons:
+        if face.select:
+            selected_faces.append( face )
+            selected_face_indexes.append( face.index )
+    
+    return selected_faces, selected_face_indexes
+
+def select_faces( obj:object, face_indexes:Array ):
+    bpy.ops.object.mode_set( mode = 'OBJECT' )
+    
+    for face_index in face_indexes:
+        obj.data.polygons[ face_index ].select = True
 #vertexIndex = the index of the vertex within obj. This is the safest way to query these values
-def get_triangles_connected_to_vertex( vertexIndex, obj ):
+def get_faces_connected_to_vertex( vertexIndex, obj ):
     if obj is None or not isType( obj, 'MESH' ) or not hasattr( obj, 'data' ):
         return []
     
@@ -415,7 +509,7 @@ def calcNormalOfVertices( vertexIndexes = None, obj = None ):
     
     for vertexIndex in vertexIndexes:
         norms.append( mathutils.Vector( (0.0, 0.0, 0.0) ) )
-        faces += get_triangles_connected_to_vertex( vertexIndex, obj )
+        faces += get_faces_connected_to_vertex( vertexIndex, obj )
     
     highCount = 0
     highArray = []

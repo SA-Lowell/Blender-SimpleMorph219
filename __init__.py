@@ -10,7 +10,7 @@ bl_info = {
     "name": "Simple Morph 219",
     "description": "Suitable for building repeatable meshes that each require unique simple tweaks to the same shape.",
     "author": "S.A. Lowell",
-    "version": (0.10, 911158, 2024.01, 27.16, 00.19, 1706371219.1),
+    "version": (0.10, 966374, 2024.01, 31.06, 56.59, 1706684219.2),
     "blender": (4, 0, 2),
     "location": "View3D > N-Panel(Side Panel) > Item > Simple Morph 219",
     "warning": "Currently in beta.",

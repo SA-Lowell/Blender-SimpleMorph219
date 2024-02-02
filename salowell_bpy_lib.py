@@ -1,10 +1,45 @@
 from ctypes import Array
+from enum import Enum
 
 import random
 
 import bpy
 import bmesh
 import mathutils
+
+class bevel_affect_items( Enum ):
+    VERTICES = 0
+    EDGES = 1
+
+class bevel_offset_type_items( Enum ):
+    OFFSET = 0
+    WIDTH = 1
+    DEPTH = 2
+    PERCENT = 3
+    ABSOLUTE = 4
+
+class bevel_miter_outer_items( Enum ):
+    SHARP = 0
+    PATCH = 1
+    ARC = 2
+
+class bevel_miter_inner_items( Enum ):
+    SHARP = 0
+    ARC = 1
+
+class bevel_vmesh_method_items( Enum ):
+    ADJ = 0
+    CUTOFF = 1
+
+class bevel_face_strength_mode_items( Enum ):
+    NONE = 0
+    NEW = 1
+    AFFECTED = 2
+    ALL = 3
+
+class bevel_profile_type_items( Enum ):
+    SUPERELLIPSE = 0
+    CUSTOM = 1
 
 def unwrapObjectUV( objectToUnwrap ):
     isolate_object_select( objectToUnwrap )

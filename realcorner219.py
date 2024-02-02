@@ -48,9 +48,25 @@ def update_real_corner_layer_values( op, context ):
 #It's fixed now but may need to change some of the design pattern... it very bad. bad bad. Me fuck dumb. Itchy tasty nuts
         realCornerPropDict[ 'edges' ] = selectedEdgesToCustomPropArray( bpy.data.objects[ op.originalObjectName ] )
     
-    realCornerPropDict[ 'bevel_settings' ][ 'segments' ] = op.bevelSegments
-    realCornerPropDict[ 'bevel_settings' ][ 'width' ] = op.bevelWidth
-    
+    realCornerPropDict[ 'bevel_settings' ][ 'affect' ] = salowell_bpy_lib.bevel_affect_items[ op.affect ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] = salowell_bpy_lib.bevel_offset_type_items[ op.offset_type ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'offset' ] = op.offset
+    realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ] = op.offset_pct
+    realCornerPropDict[ 'bevel_settings' ][ 'segments' ] = op.segments
+    realCornerPropDict[ 'bevel_settings' ][ 'profile' ] = op.profile
+    realCornerPropDict[ 'bevel_settings' ][ 'material' ] = op.material
+    realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] = op.harden_normals
+    realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] = op.clamp_overlap
+    realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] = op.loop_slide
+    realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] = op.mark_seam
+    realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] = op.mark_sharp
+    realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] = salowell_bpy_lib.bevel_miter_outer_items[ op.miter_outer ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] = salowell_bpy_lib.bevel_miter_inner_items[ op.miter_inner ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'spread' ] = op.spread
+    realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] = salowell_bpy_lib.bevel_vmesh_method_items[ op.vmesh_method ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] = salowell_bpy_lib.bevel_face_strength_mode_items[ op.face_strength_mode ].value
+    realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] = salowell_bpy_lib.bevel_profile_type_items[ op.profile_type ].value
+
     realCorner219LastUpdate = [
         op.originalObjectName,
         op.real_corner_layer_name,
@@ -346,34 +362,242 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             ( "UPDATE_LAYER", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" )
         ]
     )
-
-    bevelSegments: IntProperty(
-        name = 'Segments (Bevel Segments)',
-        default = 0,
-        update = update_real_corner_layer_values,
-        min = 0,
-        soft_min = 0
+    
+    affect: EnumProperty(
+        name = 'Affect',
+        description = 'Affect edges or vertices',
+        default = 'EDGES',
+        items = [
+            ('VERTICES', 'Vertices', 'Affect only vertices'),
+            ('EDGES', 'Edges', 'Affect only edges')
+        ],
+        update = update_real_corner_bevel_values
+	)
+    
+    offset_type: EnumProperty(
+        name = 'Width Type',
+        description = 'The method for determining the size of the bevel',
+        default = 'OFFSET',
+        items = [
+            ('OFFSET', 'Offset', 'Amount is offset of new edges from original'),
+            ('WIDTH', 'Width', 'Amount is width of new face'),
+            ('DEPTH', 'Depth', 'Amount is perpendicular distance from original edge to bevel face'),
+            ('PERCENT', 'Percent', 'Amount is percent of adjacent edge length'),
+            ('ABSOLUTE', 'Absolute', 'Amount is absolute distance along adjacent edge')
+        ],
+        update = update_real_corner_bevel_values
     )
     
-    bevelWidth: FloatProperty(
+    offset: FloatProperty(
+        name = 'Width',
+        description = 'Bevel amount',
         default = 0.0,
-        name = "Width (Bevel Width)",
-        precision = 4,
-        unit = "LENGTH",
-        update = update_real_corner_layer_values
-    )
+        soft_min = 0.0,
+        soft_max = 100.0,
+        precision = 3,
+        update = update_real_corner_bevel_values
+	)
     
-    preview: BoolProperty(
+    offset_pct: FloatProperty(
+        name = 'Width Percent',
+        description = 'Bevel amount for percentage method',
+        default = 0.0,
+        soft_min = 0.0,
+        soft_max = 100.0,
+        precision = 3,
+        update = update_real_corner_bevel_values
+	)
+    
+    segments: IntProperty(
+        name = 'Segments',
+        description = 'Segments for curved edge',
+        default = 1,
+        soft_min = 1,
+        soft_max = 100,
+        update = update_real_corner_bevel_values
+	)
+    
+    profile: FloatProperty(
+        name = 'Profile',
+        description = 'Controls profile shape (0.5 = round)',
+        default = 0.5,
+        soft_min = 0.0,
+        soft_max = 1.0,
+        precision = 3,
+        update = update_real_corner_bevel_values
+	)
+    
+    material: IntProperty(
+        name = 'Material Index',
+        description = 'Material for bevel faces (-1 means use adjacent faces)',
+        default = -1,
+        soft_min = -1,
+        soft_max = 100,
+        update = update_real_corner_bevel_values
+	)
+    
+    harden_normals: BoolProperty(
+        name = 'Harden Normals',
+        description = 'Match normals of new faces to adjacent faces',
+        default = False,
+        update = update_real_corner_bevel_values
+	)
+    
+    clamp_overlap: BoolProperty(
+        name = 'Clamp Overlap',
+        description = 'Do not allow beveled edges/vertices to overlap each other',
+        default = False,
+        update = update_real_corner_bevel_values
+	)
+    
+    loop_slide: BoolProperty(
+        name = 'Loop Slide',
+        description = 'Prefer sliding along edges to even widths',
         default = True,
-        name = "Preview"
+        update = update_real_corner_bevel_values
+	)
+    
+    mark_seam: BoolProperty(
+        name = 'Mark Seams',
+        description = 'Mark Seams along beveled edges',
+        default = False,
+        update = update_real_corner_bevel_values
+	)
+    
+    mark_sharp: BoolProperty(
+        name = 'Mark Sharp',
+        description = 'Mark beveled edges as sharp',
+        default = False,
+        update = update_real_corner_bevel_values
+	)
+    
+    miter_outer: EnumProperty(
+        name = 'Outer Miter',
+        description = 'Pattern to use for outside of miters',
+        default = 'SHARP',
+        items = [
+            ('SHARP', 'Sharp', 'Outside of miter is sharp'),
+            ('PATCH', 'Patch', 'Outside of miter is squared-off patch'),
+            ('ARC', 'Arc', 'Outside of miter is arc')
+        ],
+        update = update_real_corner_bevel_values
+	)
+    
+    miter_inner: EnumProperty(
+        name = 'Inner Miter',
+        description = 'Pattern to use for inside of miters',
+        default = 'SHARP',
+        items = [
+            ('SHARP', 'Sharp', 'Inside of miter is sharp'),
+            ('ARC', 'Arc', 'Inside of miter is arc')
+        ],
+        update = update_real_corner_bevel_values
+	)
+    
+    spread: FloatProperty(
+        name = 'Spread',
+        description = 'Amount to spread arcs for arc inner miters',
+        default = 0.1,
+        soft_min = 0.0,
+        soft_max = 100.0,
+        precision = 3,
+        update = update_real_corner_bevel_values
+	)
+    
+    vmesh_method: EnumProperty(
+        name = 'Vertex Mesh Method',
+        description = 'The method to use to create meshes at intersections',
+        default = 'ADJ',
+        items = [
+            ('ADJ', 'Grid Fill', 'Default patterned fill'),
+            ('CUTOFF', 'Cutoff', "A cutoff at each profile's end before the intersection")
+        ],
+        update = update_real_corner_bevel_values
+	)
+    
+    face_strength_mode: EnumProperty(
+        name = 'Face Strength Mode',
+        description = 'Whether to set face strength, and which faces to set face strength on',
+        default = 'NONE',
+        items = [
+            ('NONE', 'None', 'Do not set face strength'),
+            ('NEW', 'New', 'Set face strength on new faces only'),
+            ('AFFECTED', 'Affected', 'Set face strength on new and modified faces only'),
+            ('ALL', 'All', 'Set face strength on all faces')
+        ],
+        update = update_real_corner_bevel_values
+	)
+    
+    profile_type: EnumProperty(
+        name = 'Profile Type',
+        description = 'The type of shape used to rebuild a beveled section',
+        default = 'SUPERELLIPSE',
+        items = [
+            ('SUPERELLIPSE', 'Superellipse', 'The profile can be a concave or convex curve'),
+            ('CUSTOM', 'Custom', 'The profile can be any arbitrary path between its endpoints')
+        ],
+        update = update_real_corner_bevel_values
     )
     
     def draw( self, context ):
         layout = self.layout
         layout.label( text = 'Updating Layer ' + str( self.real_corner_layer_index ) )
-        layout.prop( self, "preview" )
-        layout.prop( self, "bevelSegments" )
-        layout.prop( self, "bevelWidth" )
+        
+        affect_column = layout.column()
+        affect_input = affect_column.prop( self, property = "affect", text = 'Affect', expand = True)
+        affect_column.enabled = False
+        
+        offset_type_column = layout.column()
+        offset_type_input = offset_type_column.prop( self, property = "offset_type", text = 'Width Type' )
+        
+        offset_column = layout.column()
+        offset_input = offset_column.prop( self, property = "offset", text = 'Width' )
+        
+        offset_pct_column = layout.column()
+        offset_pct_input = offset_pct_column.prop( self, property = "offset_pct", text = 'Width Percent' )
+
+        segments_column = layout.column()
+        segments_input = segments_column.prop( self, property = "segments", text = "Segments" )
+        
+        profile_column = layout.column()
+        profile_input = profile_column.prop( self, property = "profile", text = "Shape" )
+        
+        material_column = layout.column()
+        material_input = material_column.prop( self, property = "material", text = "Material Index" )
+        
+        harden_normals_column = layout.column()
+        harden_normals_input = harden_normals_column.prop( self, property = "harden_normals", text = "Harden Normals" )
+        
+        clamp_overlap_column = layout.column()
+        clamp_overlap_input = clamp_overlap_column.prop( self, property = "clamp_overlap", text = "Clamp Overlap" )
+        
+        loop_slide_column = layout.column()
+        loop_slide_input = loop_slide_column.prop( self, property = "loop_slide", text = "Loop Slide" )
+        
+        mark_seam_column = layout.column()
+        mark_seam_input = mark_seam_column.prop( self, property = "mark_seam", text = "Seams" )
+        
+        mark_sharp_column = layout.column()
+        mark_sharp_input = mark_sharp_column.prop( self, property = "mark_sharp", text = "Sharp" )
+        
+        miter_outer_column = layout.column()
+        miter_outer_input = miter_outer_column.prop( self, property = "miter_outer", text = "Outer" )
+        
+        miter_inner_column = layout.column()
+        miter_inner_input = miter_inner_column.prop( self, property = "miter_inner", text = "Inner" )
+        
+        spread_column = layout.column()
+        spread_input = spread_column.prop( self, property = "spread", text = "Spread" )
+        
+        vmesh_method_column = layout.column()
+        vmesh_method_input = vmesh_method_column.prop( self, property = "vmesh_method", text = "Intersection Type" )
+        
+        face_strength_mode_column = layout.column()
+        face_strength_mode_input = face_strength_mode_column.prop( self, property = "face_strength_mode", text = "Face Strength" )
+        
+        profile_type_column = layout.column()
+        profile_type_input = profile_type_column.prop( self, property = "profile_type", text = "Profile Type", expand = True )
+        profile_type_column.enabled = False
 
     def execute( self, context ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked, update_real_corner_layer_values_locked
@@ -398,8 +622,26 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             salowell_bpy_lib.isolate_object_select( selectedObject )
 
             realCornerPropDict = realCornerPropStringToDict( bpy.data.objects[ self.originalObjectName ][ self.real_corner_layer_name ] )
-            self.bevelSegments = realCornerPropDict[ 'bevel_settings' ][ 'segments' ]
-            self.bevelWidth = realCornerPropDict[ 'bevel_settings' ][ 'width' ]
+            
+            self.affect = salowell_bpy_lib.bevel_affect_items( realCornerPropDict[ 'bevel_settings' ][ 'affect' ] ).name
+            self.offset_type = salowell_bpy_lib.bevel_offset_type_items( realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] ).name
+            self.offset = realCornerPropDict[ 'bevel_settings' ][ 'offset' ]
+            self.offset_pct = realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ]
+            self.segments = realCornerPropDict[ 'bevel_settings' ][ 'segments' ]
+            self.profile = realCornerPropDict[ 'bevel_settings' ][ 'profile' ]
+            self.material = realCornerPropDict[ 'bevel_settings' ][ 'material' ]
+            self.harden_normals = realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ]
+            self.clamp_overlap = realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ]
+            self.loop_slide = realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ]
+            self.mark_seam = realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ]
+            self.mark_sharp = realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ]
+            self.miter_outer = salowell_bpy_lib.bevel_miter_outer_items( realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] ).name
+            self.miter_inner = salowell_bpy_lib.bevel_miter_inner_items( realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] ).name
+            self.spread = realCornerPropDict[ 'bevel_settings' ][ 'spread' ]
+            self.vmesh_method = salowell_bpy_lib.bevel_vmesh_method_items( realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] ).name
+            self.face_strength_mode = salowell_bpy_lib.bevel_face_strength_mode_items( realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] ).name
+            self.profile_type = salowell_bpy_lib.bevel_profile_type_items( realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] ).name
+            
             bpy.data.objects[ self.originalObjectName ][ self.real_corner_layer_name ] = realCornerPropDictToString( realCornerPropDict )
             
             bpy.ops.object.mode_set( mode = 'OBJECT')
@@ -569,14 +811,49 @@ def createEmptyRealCornerPropDict() -> dict:
     realCornerPropDict:dict = {}
     realCornerPropDict[ 'edges' ] = []
     realCornerPropDict[ 'bevel_settings' ] = {}
-    realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'width' ]:float = 0.0
+    realCornerPropDict[ 'bevel_settings' ][ 'affect' ]:int = 1
+    realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ]:int = 0
+    realCornerPropDict[ 'bevel_settings' ][ 'offset' ]:float = 0.0
+    realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ]:float = 0.0
+    realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
+    realCornerPropDict[ 'bevel_settings' ][ 'profile' ]:float = 0.5
+    realCornerPropDict[ 'bevel_settings' ][ 'material' ]:int = -1
+    realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ]:bool = False
+    realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ]:bool = False
+    realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ]:bool = True
+    realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ]:bool = False
+    realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ]:bool = False
+    realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ]:int = 0
+    realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ]:int = 0
+    realCornerPropDict[ 'bevel_settings' ][ 'spread' ]:float = 0.1
+    realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ]:int = 0
+    realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ]:int = 0
+    realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ]:int = 0
     
     return realCornerPropDict
 
 def realCornerPropDictToString( realCornerPropDict:dict ) -> str:
+    affect:str = str( realCornerPropDict[ 'bevel_settings' ][ 'affect' ] )
+    offset_type:str = str( realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] )
+    offset:str = str( realCornerPropDict[ 'bevel_settings' ][ 'offset' ] )
+    offset_pct:str = str( realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ] )
+    segments:str = str( realCornerPropDict[ 'bevel_settings' ][ 'segments' ] )
+    profile:str = str( realCornerPropDict[ 'bevel_settings' ][ 'profile' ] )
+    material:str = str( realCornerPropDict[ 'bevel_settings' ][ 'material' ] )
+    harden_normals:str = str( int( realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] ) )
+    clamp_overlap:str = str( int( realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] ) )
+    loop_slide:str = str( int( realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] ) )
+    mark_seam:str = str( int( realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] ) )
+    mark_sharp:str = str( int( realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] ) )
+    miter_outer:str = str( realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] )
+    miter_inner:str = str( realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] )
+    spread:str = str( realCornerPropDict[ 'bevel_settings' ][ 'spread' ] )
+    vmesh_method:str = str( realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] )
+    face_strength_mode:str = str( realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] )
+    profile_type:str = str( realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] )
+    
     realCornerPropString:str = '0(' + ','.join( str( edgeId ) for edgeId in realCornerPropDict[ 'edges' ] ) + ')'
-    realCornerPropString = realCornerPropString + '(' + str( realCornerPropDict[ 'bevel_settings' ][ 'segments' ] ) + ',' + str( realCornerPropDict[ 'bevel_settings' ][ 'width' ] ) + ')'
+    realCornerPropString = realCornerPropString + '(' + affect + ',' + offset_type + ',' + offset + ',' + offset_pct + ',' + segments + ',' + profile + ',' + material + ',' + harden_normals + ',' + clamp_overlap + ',' + loop_slide + ',' + mark_seam + ',' + mark_sharp + ',' + miter_outer + ',' + miter_inner + ',' + spread + ',' + vmesh_method + ',' + face_strength_mode + ',' + profile_type + ')'
     
     return realCornerPropString
 
@@ -585,11 +862,11 @@ def realCornerPropIndexToDict( obj:object, propKey:str ) -> dict:
 
 def realCornerPropStringToDict( realCornerPropString:str ) -> str:
     realCornerPropDict = createEmptyRealCornerPropDict()
-    realCornerPropDict:dict = {}
-    realCornerPropDict[ 'edges' ] = []
-    realCornerPropDict[ 'bevel_settings' ] = {}
-    realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
-    realCornerPropDict[ 'bevel_settings' ][ 'width' ]:float = 0.001
+    #realCornerPropDict:dict = {}
+    #realCornerPropDict[ 'edges' ] = []
+    #realCornerPropDict[ 'bevel_settings' ] = {}
+    #realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
+    #realCornerPropDict[ 'bevel_settings' ][ 'offset' ]:float = 0.001
     
     propertyValues = realCornerPropString.strip().lstrip( '0' ).lstrip( '(' ).rstrip( ')' ).split( ')(' )
     
@@ -605,9 +882,25 @@ def realCornerPropStringToDict( realCornerPropString:str ) -> str:
             
             realCornerPropDict[ 'edges' ] = split
         elif index == 1 and value != '':
-            realCornerPropDict[ 'bevel_settings' ][ 'segments' ] = realCornerPropDict[ 'bevel_settings' ][ 'segments' ] if len( split ) < 1 else int( split[0] )
-            realCornerPropDict[ 'bevel_settings' ][ 'width' ]  = realCornerPropDict[ 'bevel_settings' ][ 'width' ] if len( split ) < 2 else float( split[1] )
-    
+            split_length = len( split )
+            realCornerPropDict[ 'bevel_settings' ][ 'affect' ] = realCornerPropDict[ 'bevel_settings' ][ 'affect' ] if split_length < 1 else int( split[0] )
+            realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] = realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] if split_length < 2 else int( split[1] )
+            realCornerPropDict[ 'bevel_settings' ][ 'offset' ] = realCornerPropDict[ 'bevel_settings' ][ 'offset' ] if split_length < 3 else float( split[2] )
+            realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ] = realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ] if split_length < 4 else float( split[3] )
+            realCornerPropDict[ 'bevel_settings' ][ 'segments' ] = realCornerPropDict[ 'bevel_settings' ][ 'segments' ] if split_length < 5 else int( split[4] )
+            realCornerPropDict[ 'bevel_settings' ][ 'profile' ] = realCornerPropDict[ 'bevel_settings' ][ 'profile' ] if split_length < 6 else float( split[5] )
+            realCornerPropDict[ 'bevel_settings' ][ 'material' ] = realCornerPropDict[ 'bevel_settings' ][ 'material' ] if split_length < 7 else int( split[6] )
+            realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] = realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] if split_length < 8 else bool( split[7] )
+            realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] = realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] if split_length < 9 else bool( split[8] )
+            realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] = realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] if split_length < 10 else bool( split[9] )
+            realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] if split_length < 11 else bool( split[10] )
+            realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] if split_length < 12 else bool( split[11] )
+            realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] = realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] if split_length < 13 else int( split[12] )
+            realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] = realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] if split_length < 14 else int( split[13] )
+            realCornerPropDict[ 'bevel_settings' ][ 'spread' ] = realCornerPropDict[ 'bevel_settings' ][ 'spread' ] if split_length < 15 else float( split[14] )
+            realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] = realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] if split_length < 16 else int( split[15] )
+            realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] = realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] if split_length < 17 else int( split[16] )
+            realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] = realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] if split_length < 18 else int( split[17] )
     return realCornerPropDict
 
 #This is currently a hacky solution for updating. I need to learn the correct design paradigm for Blender's API.
@@ -653,7 +946,27 @@ def genRealCornerMesh( obj, layerIndexKey ) -> None:
             bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
         
         bpy.ops.object.mode_set( mode = 'EDIT')
-        bpy.ops.mesh.bevel( offset_type = 'WIDTH', offset = propDic[ 'bevel_settings' ][ 'width' ], profile_type = 'SUPERELLIPSE', offset_pct = 0.0, segments = propDic[ 'bevel_settings' ][ 'segments' ], profile = 0.5, affect = 'EDGES', clamp_overlap = False, loop_slide = True, mark_seam = False, mark_sharp = False, material = -1, harden_normals = False, face_strength_mode = 'NONE', miter_outer = 'SHARP', miter_inner = 'SHARP', spread = 0.1, vmesh_method = 'ADJ', release_confirm = False )
+        bpy.ops.mesh.bevel(
+            offset_type = salowell_bpy_lib.bevel_offset_type_items( propDic[ 'bevel_settings' ][ 'offset_type' ] ).name, 
+            offset = propDic[ 'bevel_settings' ][ 'offset' ], 
+            profile_type = salowell_bpy_lib.bevel_profile_type_items( propDic[ 'bevel_settings' ][ 'profile_type' ] ).name, 
+            offset_pct = propDic[ 'bevel_settings' ][ 'offset_pct' ], 
+            segments = propDic[ 'bevel_settings' ][ 'segments' ], 
+            profile = propDic[ 'bevel_settings' ][ 'profile' ], 
+            affect = salowell_bpy_lib.bevel_affect_items( propDic[ 'bevel_settings' ][ 'affect' ] ).name,
+            clamp_overlap = propDic[ 'bevel_settings' ][ 'clamp_overlap' ], 
+            loop_slide = propDic[ 'bevel_settings' ][ 'loop_slide' ], 
+            mark_seam = propDic[ 'bevel_settings' ][ 'mark_seam' ], 
+            mark_sharp = propDic[ 'bevel_settings' ][ 'mark_sharp' ], 
+            material = propDic[ 'bevel_settings' ][ 'material' ], 
+            harden_normals = propDic[ 'bevel_settings' ][ 'harden_normals' ], 
+            face_strength_mode = salowell_bpy_lib.bevel_face_strength_mode_items( propDic[ 'bevel_settings' ][ 'face_strength_mode' ] ).name, 
+            miter_outer = salowell_bpy_lib.bevel_miter_outer_items( propDic[ 'bevel_settings' ][ 'miter_outer' ] ).name, 
+            miter_inner = salowell_bpy_lib.bevel_miter_inner_items( propDic[ 'bevel_settings' ][ 'miter_inner' ] ).name, 
+            spread = propDic[ 'bevel_settings' ][ 'spread' ], 
+            vmesh_method = salowell_bpy_lib.bevel_vmesh_method_items( propDic[ 'bevel_settings' ][ 'vmesh_method' ] ).name, 
+            release_confirm = False
+        )
 
 @bpy.app.handlers.persistent
 def realcorner219HandleSelectDeselect( scene ) -> None:

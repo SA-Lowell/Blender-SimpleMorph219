@@ -25,16 +25,13 @@ realCorner219LastUpdate = []
 realCorner219SelectedBaseObjName:str = ''
 realCorner219ModifiedObjName:str = ''
 realcorner219HandleSelectDeselectFunctionLocked:bool = False
-update_real_corner_layer_values_locked:bool = False
+update_real_corner_bevel_values_locked:bool = False
 
-def real_corner_changed_selected_layer( uiCaller, context ):
-    pass
-
-def update_real_corner_layer_values( op, context ):
-    global update_real_corner_layer_values_locked, realCorner219CurrentState, realCorner219States, realCorner219LastUpdate
+def update_real_corner_bevel_values( op, context ):
+    global update_real_corner_bevel_values_locked, realCorner219CurrentState, realCorner219States, realCorner219LastUpdate
     
-    #if update_real_corner_layer_values_locked:
-        #return None
+    if update_real_corner_bevel_values_locked:
+        return None
     
     objectNameToQueryPropertiesFrom:str = op.originalObjectName
     if realCorner219CurrentState == realCorner219States.UPDATING_LAYER and op.placeholderObjectName != '':
@@ -74,6 +71,9 @@ def update_real_corner_layer_values( op, context ):
     ]
     
     return None
+
+def real_corner_changed_selected_layer( uiCaller, context ):
+    pass
 
 def update_real_corner_selection_list( scene, context ):
     items = []
@@ -228,6 +228,7 @@ def createSupportingEdgeLoopsAroundSelectedFaces( obj, supporting_edge_loop_leng
                         new_vertex_position = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ source_vertex_index ] ].co + move_vector * supporting_edge_loop_length
                         source_vertex_index_id = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ source_vertex_index ] ].index
                         destination_vertex_index_id = bpy.context.selected_objects[0].data.vertices[ pre_split_edge.vertices[ destination_vertex_index ] ].index
+                        
                         bpy.ops.object.mode_set( mode = 'EDIT')
                         bpy.ops.mesh.select_all( action = 'DESELECT' )
                         bpy.ops.object.mode_set( mode = 'OBJECT')
@@ -264,7 +265,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
     
     action: EnumProperty(
         items = [
-            ( "TEST", "Test", "Test" ),
+            ( "TEST_QUICK", "Test Quick", "Test Quick" ),
             ( "APPLY_REAL_CORNER_CHANGES", "Apply Real Corner Changes", "This is used to apply any recent real corner changes that were made" ),
             ( "TURN_ON_EDGE_SELECT", "Turn On Real Corner 219 Edge Select", "Turns on the Real Corner 219 Edge Select mode."),
             ( "TURN_OFF_AND_SAVE_EDGE_SELECT", "Turn Off Real Corner 219 Edge Select and save", "Turns off the Real Corner 219 Edge Select mode and saves the currently selected edges."),
@@ -274,9 +275,9 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
     def execute( self, context ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked
         
-        if self.action == 'TEST':
-            supporting_edge_loop_length:float = 0.02
-            createSupportingEdgeLoopsAroundSelectedFaces( bpy.context.selected_objects[0], supporting_edge_loop_length )
+        if self.action == 'TEST_QUICK':
+            #supporting_edge_loop_length:float = 0.1
+            #createSupportingEdgeLoopsAroundSelectedFaces( bpy.context.selected_objects[0], supporting_edge_loop_length )
             
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':
@@ -600,7 +601,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
         profile_type_column.enabled = False
 
     def execute( self, context ):
-        global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked, update_real_corner_layer_values_locked
+        global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked, update_real_corner_bevel_values_locked
         
         selectedObject = bpy.context.selected_objects
         
@@ -656,7 +657,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             realcorner219HandleSelectDeselectFunctionLocked = False
         else:
             realcorner219HandleSelectDeselectFunctionLocked = True
-            update_real_corner_layer_values_locked = True
+            update_real_corner_bevel_values_locked = True
             bpy.ops.object.mode_set( mode = 'OBJECT')
             
             if selectedObject.name != self.originalObjectName:
@@ -673,7 +674,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             genRealCornerMesh( updatedObject, self.real_corner_layer_name )
             self.placeholderObjectName = context.selected_objects[0].name
             realcorner219HandleSelectDeselectFunctionLocked = False
-            update_real_corner_layer_values_locked = False
+            update_real_corner_bevel_values_locked = False
         self.action = 'DO_NOTHING'
         
         return { 'FINISHED' }
@@ -704,9 +705,9 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         
         layout = self.layout
         
-        testBtn = layout.column()
-        testObj = testBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Test' )
-        testObj.action = 'TEST'
+        testQuickBtn = layout.column()
+        testQuickObj = testQuickBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Test Quick' )
+        testQuickObj.action = 'TEST_QUICK'
         
         if context.selected_objects is not None and len( context.selected_objects ) > 0:
             selectedObject = context.selected_objects[0]
@@ -872,8 +873,6 @@ def realCornerPropStringToDict( realCornerPropString:str ) -> str:
     
     for index, value in enumerate( propertyValues ):
         split = value.split( ',' )
-        
-
         
         if index == 0 and value != '':
             for edgeIndex, edgeValue in enumerate( split ):

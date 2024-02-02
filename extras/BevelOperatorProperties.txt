@@ -1,0 +1,231 @@
+{
+	'offset_type':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Width Type',
+			'description': 'The method for determining the size of the bevel',
+			'default': 'OFFSET',
+			'items':
+			(
+				('OFFSET', 'Offset', 'Amount is offset of new edges from original'),
+				('WIDTH', 'Width', 'Amount is width of new face'),
+				('DEPTH', 'Depth', 'Amount is perpendicular distance from original edge to bevel face'),
+				('PERCENT', 'Percent', 'Amount is percent of adjacent edge length'),
+				('ABSOLUTE', 'Absolute', 'Amount is absolute distance along adjacent edge')
+			)
+		}
+	),
+	'offset':
+	(
+		<built-in function FloatProperty>,
+		{
+			'name': 'Width',
+			'description': 'Bevel amount',
+			'default': 0.0,
+			'soft_min': 0.0,
+			'soft_max': 100.0,
+			'precision': 3
+		}
+	),
+	'profile_type':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Profile Type',
+			'description': 'The type of shape used to rebuild a beveled section',
+			'default': 'SUPERELLIPSE',
+			'items':
+			(
+				('SUPERELLIPSE', 'Superellipse', 'The profile can be a concave or convex curve'),
+				('CUSTOM', 'Custom', 'The profile can be any arbitrary path between its endpoints')
+			)
+		}
+	),
+	'offset_pct':
+	(
+		<built-in function FloatProperty>,
+		{
+			'name': 'Width Percent',
+			'description': 'Bevel amount for percentage method',
+			'default': 0.0,
+			'soft_min': 0.0,
+			'soft_max': 100.0,
+			'precision': 3
+		}
+	),
+	'segments':
+	(
+		<built-in function IntProperty>,
+		{
+			'name': 'Segments',
+			'description': 'Segments for curved edge',
+			'default': 1,
+			'soft_min': 1,
+			'soft_max': 100
+		}
+	),
+	'profile':
+	(
+		<built-in function FloatProperty>,
+		{
+			'name': 'Profile',
+			'description': 'Controls profile shape (0.5 = round)',
+			'default': 0.5,
+			'soft_min': 0.0,
+			'soft_max': 1.0,
+			'precision': 3
+		}
+	),
+	'affect':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Affect',
+			'description': 'Affect edges or vertices',
+			'default': 'EDGES',
+			'items':
+			(
+				('VERTICES', 'Vertices', 'Affect only vertices'),
+				('EDGES', 'Edges', 'Affect only edges')
+			)
+		}
+	),
+	'clamp_overlap':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Clamp Overlap',
+			'description': 'Do not allow beveled edges/vertices to overlap each other',
+			'default': False
+		}
+	),
+	'loop_slide':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Loop Slide',
+			'description': 'Prefer sliding along edges to even widths',
+			'default': True
+		}
+	),
+	'mark_seam':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Mark Seams',
+			'description': 'Mark Seams along beveled edges',
+			'default': False
+		}
+	),
+	'mark_sharp':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Mark Sharp',
+			'description': 'Mark beveled edges as sharp',
+			'default': False
+		}
+	),
+	'material':
+	(
+		<built-in function IntProperty>,
+		{
+			'name': 'Material Index',
+			'description': 'Material for bevel faces (-1 means use adjacent faces)',
+			'default': -1,
+			'soft_min': -1,
+			'soft_max': 100
+		}
+	),
+	'harden_normals':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Harden Normals',
+			'description': 'Match normals of new faces to adjacent faces',
+			'default': False
+		}
+	),
+	'face_strength_mode':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Face Strength Mode',
+			'description': 'Whether to set face strength, and which faces to set face strength on',
+			'default': 'NONE',
+			'items':
+			(
+				('NONE', 'None', 'Do not set face strength'),
+				('NEW', 'New', 'Set face strength on new faces only'),
+				('AFFECTED', 'Affected', 'Set face strength on new and modified faces only'),
+				('ALL', 'All', 'Set face strength on all faces')
+			)
+		}
+	),
+	'miter_outer':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Outer Miter',
+			'description': 'Pattern to use for outside of miters',
+			'default': 'SHARP',
+			'items':
+			(
+				('SHARP', 'Sharp', 'Outside of miter is sharp'),
+				('PATCH', 'Patch', 'Outside of miter is squared-off patch'),
+				('ARC', 'Arc', 'Outside of miter is arc')
+			)
+		}
+	),
+	'miter_inner':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Inner Miter',
+			'description': 'Pattern to use for inside of miters',
+			'default': 'SHARP',
+			'items':
+			(
+				('SHARP', 'Sharp', 'Inside of miter is sharp'),
+				('ARC', 'Arc', 'Inside of miter is arc')
+			)
+		}
+	),
+	'spread':
+	(
+		<built-in function FloatProperty>,
+		{
+			'name': 'Spread',
+			'description': 'Amount to spread arcs for arc inner miters',
+			'default': 0.10000000149011612,
+			'soft_min': 0.0,
+			'soft_max': 100.0,
+			'precision': 3
+		}
+	),
+	'vmesh_method':
+	(
+		<built-in function EnumProperty>,
+		{
+			'name': 'Vertex Mesh Method',
+			'description':
+			'The method to use to create meshes at intersections',
+			'default': 'ADJ',
+			'items':
+			(
+				('ADJ', 'Grid Fill', 'Default patterned fill'),
+				('CUTOFF', 'Cutoff', "A cutoff at each profile's end before the intersection")
+			)
+		}
+	),
+	'release_confirm':
+	(
+		<built-in function BoolProperty>,
+		{
+			'name': 'Confirm on Release',
+			'description': '',
+			'default': False
+		}
+	)
+}

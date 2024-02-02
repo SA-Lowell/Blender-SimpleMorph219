@@ -706,3 +706,46 @@ def ShowMessageBox( message = "", title = "Message Box", icon = 'INFO' ):
         self.layout.label( text = message )
     
     bpy.context.window_manager.popup_menu( draw, title = title, icon = icon )
+
+#https://blenderartists.org/t/extending-built-in-operator/1257955/4
+def keywords_from_prop( p_rna ):
+    kw = {}
+    
+    for kwname in ( "name", "description", "default", "min", "size", "max", "soft_min", "soft_max", "precision" ):
+        value = getattr( p_rna, kwname, None )
+        
+        if value is not None:
+            kw[ kwname ] = value
+    
+    if p_rna.type == 'ENUM':
+        kw[ "items" ] = tuple( ( i.identifier, i.name, i.description ) for i in p_rna.enum_items )
+    
+    return kw
+
+def props_from_op(idname):
+    """
+    Retrieves all the properties of a native Blender Operator. Useful for discovering how a native operator is laid out/designed.
+
+    Parameters
+    ----------
+    idname : str
+        The RNA id name of the operator. ex: 'mesh.bevel'
+
+    Returns
+    -------
+        A dict that contains all the properties of the input operator rna id.
+    """
+    import _bpy
+    
+    props_dict = {}
+    op_rna = _bpy.ops.get_rna_type( idname )
+    
+    for p in op_rna.properties:
+        if p.identifier == "rna_type":
+            continue
+        
+        prop = getattr( bpy.props, p.rna_type.identifier )
+        kwargs = keywords_from_prop( p )
+        props_dict[ p.identifier ] = prop, kwargs
+    
+    return props_dict

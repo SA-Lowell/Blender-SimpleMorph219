@@ -882,6 +882,7 @@ def realCornerPropStringToDict( realCornerPropString:str ) -> str:
             realCornerPropDict[ 'edges' ] = split
         elif index == 1 and value != '':
             split_length = len( split )
+            
             realCornerPropDict[ 'bevel_settings' ][ 'affect' ] = realCornerPropDict[ 'bevel_settings' ][ 'affect' ] if split_length < 1 else int( split[0] )
             realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] = realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] if split_length < 2 else int( split[1] )
             realCornerPropDict[ 'bevel_settings' ][ 'offset' ] = realCornerPropDict[ 'bevel_settings' ][ 'offset' ] if split_length < 3 else float( split[2] )
@@ -889,17 +890,18 @@ def realCornerPropStringToDict( realCornerPropString:str ) -> str:
             realCornerPropDict[ 'bevel_settings' ][ 'segments' ] = realCornerPropDict[ 'bevel_settings' ][ 'segments' ] if split_length < 5 else int( split[4] )
             realCornerPropDict[ 'bevel_settings' ][ 'profile' ] = realCornerPropDict[ 'bevel_settings' ][ 'profile' ] if split_length < 6 else float( split[5] )
             realCornerPropDict[ 'bevel_settings' ][ 'material' ] = realCornerPropDict[ 'bevel_settings' ][ 'material' ] if split_length < 7 else int( split[6] )
-            realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] = realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] if split_length < 8 else bool( split[7] )
-            realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] = realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] if split_length < 9 else bool( split[8] )
-            realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] = realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] if split_length < 10 else bool( split[9] )
-            realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] if split_length < 11 else bool( split[10] )
-            realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] if split_length < 12 else bool( split[11] )
+            realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] = realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ] if split_length < 8 else bool( int( split[7] ) )
+            realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] = realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ] if split_length < 9 else bool( int( split[8] ) )
+            realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] = realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ] if split_length < 10 else bool( int( split[9] ) )
+            realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ] if split_length < 11 else bool( int( split[10] ) )
+            realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] = realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ] if split_length < 12 else bool( int( split[11] ) )
             realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] = realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] if split_length < 13 else int( split[12] )
             realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] = realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] if split_length < 14 else int( split[13] )
             realCornerPropDict[ 'bevel_settings' ][ 'spread' ] = realCornerPropDict[ 'bevel_settings' ][ 'spread' ] if split_length < 15 else float( split[14] )
             realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] = realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] if split_length < 16 else int( split[15] )
             realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] = realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] if split_length < 17 else int( split[16] )
             realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] = realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] if split_length < 18 else int( split[17] )
+    
     return realCornerPropDict
 
 #This is currently a hacky solution for updating. I need to learn the correct design paradigm for Blender's API.
@@ -945,6 +947,7 @@ def genRealCornerMesh( obj, layerIndexKey ) -> None:
             bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
         
         bpy.ops.object.mode_set( mode = 'EDIT')
+        
         bpy.ops.mesh.bevel(
             offset_type = salowell_bpy_lib.bevel_offset_type_items( propDic[ 'bevel_settings' ][ 'offset_type' ] ).name, 
             offset = propDic[ 'bevel_settings' ][ 'offset' ], 

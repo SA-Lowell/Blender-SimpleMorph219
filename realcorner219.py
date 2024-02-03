@@ -39,10 +39,7 @@ def update_real_corner_bevel_values( op, context ):
     
     realCornerPropDict = realCornerPropStringToDict( bpy.data.objects[ objectNameToQueryPropertiesFrom ][ op.real_corner_layer_name ] )
     
-
     if realCorner219CurrentState != realCorner219States.UPDATING_LAYER:
-#Here is where it goes wrong, this assignment to 'edges' is the problem... hmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm.
-#It's fixed now but may need to change some of the design pattern... it very bad. bad bad. Me fuck dumb. Itchy tasty nuts
         realCornerPropDict[ 'edges' ] = selectedEdgesToCustomPropArray( bpy.data.objects[ op.originalObjectName ] )
     
     realCornerPropDict[ 'bevel_settings' ][ 'affect' ] = salowell_bpy_lib.bevel_affect_items[ op.affect ].value
@@ -63,7 +60,7 @@ def update_real_corner_bevel_values( op, context ):
     realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] = salowell_bpy_lib.bevel_vmesh_method_items[ op.vmesh_method ].value
     realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] = salowell_bpy_lib.bevel_face_strength_mode_items[ op.face_strength_mode ].value
     realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] = salowell_bpy_lib.bevel_profile_type_items[ op.profile_type ].value
-
+    
     realCorner219LastUpdate = [
         op.originalObjectName,
         op.real_corner_layer_name,
@@ -1014,8 +1011,7 @@ def realcorner219HandleSelectDeselect( scene ) -> None:
             
             realCorner219CurrentState = realCorner219States.NONE
             bpy.data.objects[ realCorner219SelectedBaseObjName ].hide_viewport = False
-            salowell_bpy_lib.isolate_object_select( bpy.data.objects[ realCorner219SelectedBaseObjName ] )
-
+            
             bpy.ops.object.mode_set( mode = currentMode )
     elif realCorner219CurrentState == realCorner219States.UPDATING_LAYER:
         if numOfSelObjs == 0 or numOfSelObjs > 1:

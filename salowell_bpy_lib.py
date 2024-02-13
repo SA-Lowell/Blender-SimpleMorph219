@@ -338,7 +338,6 @@ def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> A
     
     return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
 
-def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
 def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', offset_pct = 0.0, segments = 1, profile = 0.5, affect = 'EDGES', clamp_overlap = False, loop_slide = True, mark_seam = False, mark_sharp = False, material = -1, harden_normals = False, face_strength_mode = 'NONE', miter_outer = 'SHARP', miter_inner = 'SHARP', spread = 0.1, vmesh_method = 'ADJ', release_confirm = False  ) -> Array:
     """
     Bevels the currently selected object and returns an array of the newly created faces
@@ -380,6 +379,7 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
     
     return get_selected_faces( bpy.context.selected_objects[0] )
     
+def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array | Array | Array | Array:
     """
     Gets the outer and inner edges of every group of selected faces.
 
@@ -390,7 +390,10 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
 
     Returns
     -------
+        [0]
         An array of all the selected outer and inner edges separated into selection groups and loops within that selection group.
+        [1]
+        Same as zero, but contains the indexes of the edges instead of the MeshEdge objects
         [ ALL
             [ FACE SELECTION GROUP 1
                 [ OUTER EDGES
@@ -424,6 +427,10 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
             ],
             ... FACE SELECTION GROUP n
         ]
+        [2]
+        An array of all the selected outer and inner edges. These are not separated into groups but are, instead, just a one dimensional array of all the inner and outer edges.
+        [3]
+        Same as 2, but contains the indexes of the edges instead of the MeshEdge objects
     """
     face_groups:Array = get_grouped_selected_faces( obj )
     bounding_edges:Array = []
@@ -443,7 +450,7 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
                     if not edge in processed_edges:
                         processed_edges.append(edge)
                         
-                        edges_faces = get_faces_touching_edge( obj, edge, 1 )[0]
+                        edges_faces = get_faces_of_edge( obj, edge.index, 1 )[0]
                         
                         if len(edges_faces) == 1:
                             bounding_edges[ face_group_index ].append( edge )
@@ -451,6 +458,9 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
     bounding_edges_grouped:Array = []
     bounding_edges_grouped_index:Array = []
     processed_edges:Array = []
+    
+    bounding_edges_1d:Array = []
+    bounding_edges_1d_indexes:Array = []
     
     for bounding_edges_index, bounding_edges_group in enumerate( bounding_edges ):
         bounding_edges_grouped.append([])
@@ -479,15 +489,18 @@ def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', 
                 processed_edges.append( processing_edge )
                 bounding_edges_grouped[ bounding_edges_index ][ bounding_edges_sub_group ].append( processing_edge )
                 bounding_edges_grouped_index[ bounding_edges_index ][ bounding_edges_sub_group ].append( processing_edge.index )
-
+                bounding_edges_1d.append( processing_edge )
+                bounding_edges_1d_indexes.append( processing_edge.index )
+                
                 for index, edge in enumerate( bounding_edges_group ):
                     if edge.vertices[0] == processing_edge.vertices[0] or edge.vertices[1] == processing_edge.vertices[1] or edge.vertices[1] == processing_edge.vertices[0] or edge.vertices[0] == processing_edge.vertices[1]:
                         if edge not in processed_edges:
                             unprocessed_linked_edges.append( edge )
                         
                         bounding_edges_group.pop( index )
+    
+    return bounding_edges_grouped, bounding_edges_grouped_index, bounding_edges_1d, bounding_edges_1d_indexes
 
-    return bounding_edges_grouped, bounding_edges_grouped_index
 def object_exists(object_name:str = '') -> bool:
     for obj in bpy.context.scene.objects:
         if obj.name == object_name:

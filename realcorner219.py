@@ -942,9 +942,7 @@ def gen_real_corner_mesh( obj, layerIndexKey ) -> None:
         for edgeIndex in propDic[ 'edges' ]:
             bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
         
-        bpy.ops.object.mode_set( mode = 'EDIT')
-        
-        bpy.ops.mesh.bevel(
+        return salowell_bpy_lib.bevel(
             offset_type = salowell_bpy_lib.bevel_offset_type_items( propDic[ 'bevel_settings' ][ 'offset_type' ] ).name, 
             offset = propDic[ 'bevel_settings' ][ 'offset' ], 
             profile_type = salowell_bpy_lib.bevel_profile_type_items( propDic[ 'bevel_settings' ][ 'profile_type' ] ).name, 

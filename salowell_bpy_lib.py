@@ -528,10 +528,10 @@ def get_grouped_selected_faces( obj ) -> Array:
             edge_keys_completed:Array = []
             
             for edge_key in  edge_key_edges :
-                if not edge_key in edge_keys_completed:
+                if not edge_key_edges[edge_key].index in edge_keys_completed:
                     start_new_group = False
-                    edge_keys_completed.append(edge_key)
-                    polygons:Array = get_faces_touching_edge( obj, edge_key_edges[edge_key], 1 )[0]
+                    edge_keys_completed.append(edge_key_edges[edge_key].index)
+                    polygons:Array = get_faces_of_edge( obj, edge_key_edges[edge_key].index, 1 )[0]
                     
                     while len(polygons) > 0:
                         polygon_index = polygons.pop()
@@ -540,9 +540,9 @@ def get_grouped_selected_faces( obj ) -> Array:
                             polygons_completed.append(polygon_index)
                             
                             for edge_key2 in polygon_index.edge_keys:
-                                if not edge_key2 in edge_keys_completed:
-                                    edge_keys_completed.append(edge_key2)
-                                    polygons2:Array = get_faces_touching_edge( obj, edge_key_edges[edge_key2], 1 )[0]
+                                if not edge_key_edges[ edge_key2 ].index in edge_keys_completed:
+                                    edge_keys_completed.append(edge_key_edges[ edge_key2 ].index)
+                                    polygons2:Array = get_faces_of_edge( obj, edge_key_edges[ edge_key2 ].index, 1 )[0]
                                     
                                     for polygon_index2 in polygons2:
                                         if polygon_index2.select and not polygon_index2 in polygons_completed and not polygon_index2 in polygons :

@@ -170,7 +170,7 @@ def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) ->
             
             if not face in owner_faces and face.select:
                 for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
-                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                    if value == mesh.edges[ edge ].vertices[0] or value == mesh.edges[ edge ].vertices[1]:
                         if found_first:
                             owner_faces.append( face )
                             owner_faces_indexes.append( face.index )
@@ -183,7 +183,7 @@ def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) ->
             
             if not face in owner_faces and not face.select:
                 for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
-                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                    if value == mesh.edges[ edge ].vertices[0] or value == mesh.edges[ edge ].vertices[1]:
                         if found_first:
                             owner_faces.append( face )
                             owner_faces_indexes.append( face.index )
@@ -196,7 +196,7 @@ def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) ->
             
             if not face in owner_faces:
                 for _, value in enumerate( face.vertices ):#TODO: THIS FOR LOOP IS SLOW AND THE MAIN PROBLEM!
-                    if value == edge.vertices[0] or value == edge.vertices[1]:
+                    if value == mesh.edges[ edge ].vertices[0] or value == mesh.edges[ edge ].vertices[1]:
                         if found_first:
                             owner_faces.append( face )
                             owner_faces_indexes.append( face.index )

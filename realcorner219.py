@@ -79,7 +79,7 @@ def update_real_corner_selection_list( scene, context ):
     if len( selectedObject ) > 0:
         selectedObject = selectedObject[0]
         
-        realCornerKeys = getAllRealCornerCustomPropKeys( selectedObject )
+        realCornerKeys = get_all_real_corner_custom_prop_keys( selectedObject )
         realCornerKeyLayer = 0
         
         for realCornerKey in realCornerKeys:
@@ -90,14 +90,14 @@ def update_real_corner_selection_list( scene, context ):
     return items
 
 def createRealCornerCustomPropKeyIfNoneExists( obj ):
-    keyArray = getAllRealCornerCustomPropKeys( obj )
+    keyArray = get_all_real_corner_custom_prop_keys( obj )
     
     if len( keyArray ) == 0:
         keyArray.append( createNewRealCornerCustomProperty( obj, realCorner219PropName ) )
     
     return keyArray
 
-def getRealCornerCustomPropKeyIndex( obj, propKey):
+def get_real_corner_custom_prop_key_index( obj, propKey):
     index:int = 0
     found:bool = False
     
@@ -113,7 +113,7 @@ def getRealCornerCustomPropKeyIndex( obj, propKey):
     
     return index
 
-def getAllRealCornerCustomPropKeys( obj ):
+def get_all_real_corner_custom_prop_keys( obj ):
     realCornerKeys = []
     
     for key, value in obj.items():
@@ -649,7 +649,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             updatedObject[ simplemorph219.simpleMorph219BaseName ] = False
             salowell_bpy_lib.isolate_object_select( updatedObject )
             realCorner219ModifiedObjName = updatedObject.name
-            genRealCornerMesh( updatedObject, self.real_corner_layer_name )
+            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
             self.placeholderObjectName = context.selected_objects[0].name
             realcorner219HandleSelectDeselectFunctionLocked = False
         else:
@@ -668,7 +668,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             updatedObject[ simplemorph219.simpleMorph219BaseName ] = False
             salowell_bpy_lib.isolate_object_select( updatedObject )
             
-            genRealCornerMesh( updatedObject, self.real_corner_layer_name )
+            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
             self.placeholderObjectName = context.selected_objects[0].name
             realcorner219HandleSelectDeselectFunctionLocked = False
             update_real_corner_bevel_values_locked = False
@@ -749,12 +749,12 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
             
             updateLayerObj.action = 'UPDATE_LAYER'
             updateLayerObj.real_corner_layer_name = realCorner219LayerIndex
-            updateLayerObj.real_corner_layer_index = getRealCornerCustomPropKeyIndex( context.selected_objects[0], realCorner219LayerIndex )
+            updateLayerObj.real_corner_layer_index = get_real_corner_custom_prop_key_index( context.selected_objects[0], realCorner219LayerIndex )
             updateLayerObj.originalObjectName = selectedObject.name
             updateLayerObj.objectLayerBeingModified = context.scene.realCorner219Layers
 
     def execute( self, context ):
-        bevelLayers = getAllRealCornerCustomPropKeys( context.selected_objects[0] )
+        bevelLayers = get_all_real_corner_custom_prop_keys( context.selected_objects[0] )
 
         if len( bevelLayers ) == 0:
             keyName = createNewRealCornerCustomProperty( context.selected_objects[0], realCorner219PropName )
@@ -767,7 +767,6 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         bm.from_mesh( me )
         
         iniSelEdgeObjs = salowell_bpy_lib.getBmeshSelectedEdges( bm )[0]
-        #iniSelPolyObjs, iniSelPolyIndexes = salowell_bpy_lib.getBmeshSelectedFaces( bm )
         
         #bm.edges.ensure_lookup_table()
         #bm.faces.ensure_lookup_table()
@@ -803,7 +802,7 @@ def selectedEdgesToCustomPropArray( obj ):
     bm:bmesh = bmesh.new()
     bm.from_mesh( me )
     
-    return salowell_bpy_lib.getMeshSelectedEdges( obj )[1]
+    return salowell_bpy_lib.get_selected_edges( obj )[1]
 
 def createEmptyRealCornerPropDict() -> dict:
     realCornerPropDict:dict = {}
@@ -911,16 +910,16 @@ def applyRealCornerUpdate( scene ) -> None:
         realCorner219LastUpdate = []
 
 def genRealCornerMeshAtPrevIndex( obj, layerIndexKey ) -> None:
-    propKeyIndex = getRealCornerCustomPropKeyIndex( obj, layerIndexKey )
+    propKeyIndex = get_real_corner_custom_prop_key_index( obj, layerIndexKey )
     
     if propKeyIndex > 0:
         propKeyIndex -= 1
-        PropKeysArr = getAllRealCornerCustomPropKeys( obj )
-        genRealCornerMesh( obj, PropKeysArr[ propKeyIndex ] )
+        PropKeysArr = get_all_real_corner_custom_prop_keys( obj )
+        gen_real_corner_mesh( obj, PropKeysArr[ propKeyIndex ] )
 
-def genRealCornerMesh( obj, layerIndexKey ) -> None:
-    realCornerPropKeys = getAllRealCornerCustomPropKeys( obj )
-    layerIndex = getRealCornerCustomPropKeyIndex( obj, layerIndexKey )
+def gen_real_corner_mesh( obj, layerIndexKey ) -> None:
+    realCornerPropKeys = get_all_real_corner_custom_prop_keys( obj )
+    layerIndex = get_real_corner_custom_prop_key_index( obj, layerIndexKey )
     
     bpy.ops.object.mode_set( mode = 'EDIT')
     

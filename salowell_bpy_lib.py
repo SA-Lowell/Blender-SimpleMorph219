@@ -136,8 +136,28 @@ class SimpleMorph219BlenderState:
         
         bpy.ops.object.mode_set( mode = self.mode )
 
-#TODO: This function is only retrieving one face but it should be retrieving 2 faces each time....
-def get_faces_touching_edge( obj, edge, select_state:int = 0 ) -> Array:
+def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) -> Array | Array:
+    """
+    Retrieves the indexes of every single face the input edge is connected to.
+
+    Parameters
+    ----------
+    obj: bpy.types.Object
+        The object that edge belongs to. This is the object that will be parsed for all connected faces.
+
+    edge: int
+        Index of the edge you want to find all connected faces of.
+    
+    select_state : int, default 0
+        Types of edges to return
+            0 = all,
+            1 = selected only,
+            -1 = unselected only
+    
+    Returns
+    -------
+        An array of indexes for each face that is connected to the input edge.
+    """
     owner_faces:Array = []
     owner_faces_indexes:Array = []
     
@@ -187,11 +207,15 @@ def get_faces_touching_edge( obj, edge, select_state:int = 0 ) -> Array:
     return owner_faces, owner_faces_indexes
 
 def get_edge_index_from_polygon_list(mesh:bpy.types.Mesh, polygonList:Array, vertex1:int, vertex2:int) -> int:
+    """
+    Given a mesh, list of polygons in that mesh (Used to optimize search time speed in the case you have a small pool of faces to query)
+    and the indexes of an edge's vertices, this will return the indnex of that edge inside of the Mesh.
+    """
     edge_index:int = -1
     
     if mesh is not None:
         for polygonIndex in polygonList:
-            for edge in mesh.polygons[polygonIndex].edge_keys:
+            for edge in mesh.polygons[ polygonIndex ].edge_keys:
                 if ( edge[0] == vertex1 and edge[1] == vertex2 ) or ( edge[0] == vertex2 and edge[1] == vertex1 ):
                     edge_index = edge.index
                     break
@@ -474,7 +498,7 @@ def ensureBoneSurvival( bone ):
     if bone.head.x == bone.tail.x and bone.head.y == bone.tail.y and bone.head.z == bone.tail.z:
         bone.tail.z += 1.0
 
-def get_selected_faces( obj ):
+def get_selected_faces( obj:object ) -> Array | Array:
     selected_faces:Array = []
     selected_face_indexes:Array = []
     
@@ -668,8 +692,8 @@ def getMeshSelectedEdges( mesh ):
     if type( mesh ) == bpy.types.Mesh:
         for edge in mesh.edges:
             if edge.select:
-                selectedEdgeIndexes.append(edge.index)
-                selectedEdgeObjs.append(edge)
+                selectedEdgeIndexes.append( edge.index )
+                selectedEdgeObjs.append( edge )
     
     bpy.ops.object.mode_set( mode = mode )
     

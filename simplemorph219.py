@@ -75,10 +75,6 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         
         if context.object is None or context.object.mode != 'OBJECT' or ( len( context.selected_objects ) == 0 or type( selectedObject ) != bpy.types.Object or selectedObject.type != 'MESH' ):
             decompileBtn.enabled = False
-    
-    @staticmethod
-    def getSelectedVertices():
-        return salowell_bpy_lib.getSelectedVertices()
 
 class SIMPLE_MORPH_219_ANGLE_CONTROLLERS_op( Operator ):
     bl_idname = 'simplemorph.219_angle_controllers_op'
@@ -819,7 +815,7 @@ def startSetDeform( context ):
     setDeform( bone = bone )
 
 def markObjectAsSimpleMorphBaseObject( obj ):
-    if len( realcorner219.getAllRealCornerCustomPropKeys( obj ) ) == 0:
+    if len( realcorner219.get_all_real_corner_custom_prop_keys( obj ) ) == 0:
         realcorner219.createNewRealCornerCustomProperty( obj, realcorner219.realCorner219PropName )
     obj[ simpleMorph219BaseName ] = True
 

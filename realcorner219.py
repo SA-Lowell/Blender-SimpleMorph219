@@ -176,7 +176,7 @@ def createSupportingEdgeLoopsAroundSelectedFaces( obj, supporting_edge_loop_leng
                 bpy.ops.mesh.select_all( action = 'DESELECT' )
                 salowell_bpy_lib.select_faces( obj, initial_selected_face_indexes )
                 
-                unselected_faces_of_bounding_edge:Array = salowell_bpy_lib.get_faces_touching_edge( bpy.context.selected_objects[0], bpy.context.selected_objects[0].data.edges[ edge ], -1 )[1]
+                unselected_faces_of_bounding_edge:Array = salowell_bpy_lib.get_faces_of_edge( bpy.context.selected_objects[0], edge, -1 )[1]
                 
                 edges_to_split:Array = []
                 source_vertex:Array = []
@@ -194,7 +194,7 @@ def createSupportingEdgeLoopsAroundSelectedFaces( obj, supporting_edge_loop_leng
                     
                     #Looping through the unbeveled edges connected to one of the vertices of this bounding edge.
                     for edge_of_vertex in edges_of_vertex:
-                        unselected_faces_touching_unbeveled_edge = salowell_bpy_lib.get_faces_touching_edge( bpy.context.selected_objects[0], bpy.context.selected_objects[0].data.edges[ edge_of_vertex ], -1 )[1]
+                        unselected_faces_touching_unbeveled_edge = salowell_bpy_lib.get_faces_of_edge( bpy.context.selected_objects[0], edge_of_vertex, -1 )[1]
                         
                         for unselected_face_touching_unbeveled_edge in unselected_faces_touching_unbeveled_edge:
                             if unselected_face_touching_unbeveled_edge in unselected_faces_of_bounding_edge:

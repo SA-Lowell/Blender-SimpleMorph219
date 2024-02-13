@@ -559,19 +559,19 @@ def getArmatureFromArmatureObject( armatureObject ):
     
     return armature
 
-def getSelectedVertices():
+def get_selected_vertices( obj:object ) -> Array | Array:
     bpy.ops.object.mode_set( mode = 'OBJECT', toggle = True )
     selectedVerticesIndexes = []
     selectedVertices = []
     
-    if len( bpy.context.selected_objects ) > 0 and hasattr( bpy.context.selected_objects[0].data, 'vertices' ) and len( bpy.context.selected_objects[0].data.vertices ) > 0:
-        my_selection = [ vertex for vertex in bpy.context.selected_objects[0].data.vertices if vertex.select ]
+    if obj is not None and hasattr( obj.data, 'vertices' ) and len( obj.data.vertices ) > 0:
+        my_selection = [ vertex for vertex in obj.data.vertices if vertex.select ]
         
         for vertex in my_selection:
             selectedVerticesIndexes.append( vertex.index )
             selectedVertices.append( vertex )
     
-    return selectedVerticesIndexes, selectedVertices
+    return selectedVertices, selectedVerticesIndexes
 
 #TODO: Change this to use a passed in object. Also wtf is the vertices parameter used for???
 def createVertexGroup( name = 'Group' ):

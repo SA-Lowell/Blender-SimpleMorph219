@@ -310,7 +310,7 @@ def createControllerBones( armature, useExistingBone ):
 
 def createController( theObject ):
     boneLength = 0.1
-    selectedVerticesIndexes, selectedVertices = salowell_bpy_lib.getSelectedVertices()
+    selectedVertices, selectedVerticesIndexes = salowell_bpy_lib.get_selected_vertices( theObject )
     
     anchorHead = salowell_bpy_lib.getCenterOfVertices( selectedVertices )
     
@@ -554,7 +554,7 @@ def startCreateController( context ):
     bpy.ops.object.editmode_toggle()
     selectedObject = context.selected_objects[0]
     
-    if len( context.selected_objects ) > 0 and len( salowell_bpy_lib.getSelectedVertices()[0] ) > 0:
+    if len( context.selected_objects ) > 0 and len( salowell_bpy_lib.get_selected_vertices( selectedObject )[1] ) > 0:
         createController( context.selected_objects[0] )
         salowell_bpy_lib.isolate_object_select( selectedObject )
         bpy.ops.object.mode_set( mode = 'EDIT' )
@@ -650,7 +650,7 @@ def startResetVertexShapes( context ):
     
     bpy.ops.object.mode_set( mode = 'OBJECT', toggle = True )
     
-    selectedVerticesIndexes = salowell_bpy_lib.getSelectedVertices()[0]
+    selectedVerticesIndexes = salowell_bpy_lib.get_selected_vertices( selectedObject )[1]
     
     if bpy.context.active_object.active_shape_key is not None and len( selectedVerticesIndexes ) != 0:
         bpy.ops.mesh.blend_from_shape( shape = 'Basis', blend = 1.0, add = False )

@@ -282,7 +282,7 @@ def get_edge_indexes_from_vertex_index( mesh:bpy.types.Mesh, vertex:int, select_
     vertex: int
         The ID/Index of the vertex
     
-    select : int, default 0
+    select_state: int, default 0
         Types of edges to return
             0 = all,
             1 = selected only,

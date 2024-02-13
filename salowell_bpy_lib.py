@@ -233,6 +233,43 @@ def get_edge_index_from_vertex_indexes(mesh:bpy.types.Mesh, vertex1:int, vertex2
     
     return edge_index
 
+def array_map_low_to_high_numbers(array:Array = []) -> Array:
+    """
+    Returns two arrays that show the proper order of the values inside of the input array.
+    
+    Parameters
+    ----------
+    array: Array
+        An array of numbers you wish to have their orders mapped
+    
+    Returns
+    -------
+        original_order_mapped
+            An array that maps the low to high order of each value.
+            ie: [48, 55, 35, 22] = [2, 3, 1, 0]
+        reordered_mapped
+            An array that maps the low to high reordered values back to the original array.
+            ie: [48, 55, 35, 22] = [22, 35, 48, 55] = [3, 2, 0, 1]
+    """
+    original_order_mapped:Array = []
+    reordered_mapped:Array = []
+    array_copy:Array = []
+    
+    for arr_value in array:
+        if not isinstance(arr_value, int) and not isinstance(arr_value, float):
+            return []
+    
+    array_copy = array.copy()
+    array_copy.sort()
+    
+    for array_copy_val in array_copy:
+        reordered_mapped.append( array.index( array_copy_val ) )
+        
+    for array_val in array:
+        original_order_mapped.append( array_copy.index( array_val ) )
+    
+    return original_order_mapped, reordered_mapped
+
 def get_edge_indexes_from_vertex_index( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 ) -> int:
     """
     Retrieves the indexes of every single edge connected to the input vertex index.
@@ -302,6 +339,47 @@ def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> A
     return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
 
 def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
+def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', offset_pct = 0.0, segments = 1, profile = 0.5, affect = 'EDGES', clamp_overlap = False, loop_slide = True, mark_seam = False, mark_sharp = False, material = -1, harden_normals = False, face_strength_mode = 'NONE', miter_outer = 'SHARP', miter_inner = 'SHARP', spread = 0.1, vmesh_method = 'ADJ', release_confirm = False  ) -> Array:
+    """
+    Bevels the currently selected object and returns an array of the newly created faces
+
+    Parameters
+    ----------
+        All parameters match those found in bpy.ops.mesh.bevel ( https://docs.blender.org/api/current/bpy.ops.mesh.html#bpy.ops.mesh.bevel )
+    
+    Returns
+    -------
+        An array of the newly created faces (Note: Sometimes their IDs can match previous face IDs from before the bevel was performed.)
+    """
+    bpy.ops.object.mode_set( mode = 'EDIT')
+    bpy.ops.mesh.select_mode( type = 'FACE' )
+    
+    bpy.ops.mesh.bevel(
+        offset_type = offset_type, 
+        offset = offset, 
+        profile_type = profile_type, 
+        offset_pct = offset_pct, 
+        segments = segments, 
+        profile = profile, 
+        affect = affect,
+        clamp_overlap = clamp_overlap, 
+        loop_slide = loop_slide, 
+        mark_seam = mark_seam, 
+        mark_sharp = mark_sharp, 
+        material = material, 
+        harden_normals = harden_normals, 
+        face_strength_mode = face_strength_mode, 
+        miter_outer = miter_outer, 
+        miter_inner = miter_inner, 
+        spread = spread, 
+        vmesh_method = vmesh_method, 
+        release_confirm = release_confirm
+    )
+    
+    bpy.ops.object.mode_set( mode = 'OBJECT')
+    
+    return get_selected_faces( bpy.context.selected_objects[0] )
+    
     """
     Gets the outer and inner edges of every group of selected faces.
 
@@ -410,7 +488,13 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array:
                         bounding_edges_group.pop( index )
 
     return bounding_edges_grouped, bounding_edges_grouped_index
+def object_exists(object_name:str = '') -> bool:
+    for obj in bpy.context.scene.objects:
+        if obj.name == object_name:
+            return True
     
+    return True
+
 #TODO: THIS IS WAY TOO SLOW! For the love of god optimize this.
 def get_grouped_selected_faces( obj ) -> Array:
     selected_face_groups:Array = []
@@ -745,6 +829,43 @@ def getEditBoneVersionOfBoneFromName( boneName, armatureObject ):
         bpy.ops.object.mode_set( mode = 'EDIT', toggle = True )
     
     return armatureObject.data.edit_bones[ boneName ]
+
+def get_edges_of_face(obj:bpy.types.Object, face_index:int, select_state:int = 0) -> Array | Array:
+    edges_of_face:Array = []
+    edges_of_face_indexes:Array = []
+    
+    if select_state == 0:
+        for edge in obj.data.edges:
+            faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
+            
+            for face_of_edge_index in faces_of_edge:
+                if face_of_edge_index == face_index:
+                    edges_of_face.append( edge )
+                    edges_of_face_indexes.append( edge.index )
+                    break
+    elif select_state == 1:
+        for edge in obj.data.edges:
+            if edge.select:
+                faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
+                
+                for face_of_edge_index in faces_of_edge:
+                    if face_of_edge_index == face_index:
+                        edges_of_face.append( edge )
+                        edges_of_face_indexes.append( edge.index )
+                        break
+    else:
+        for edge in obj.data.edges:
+            if not edge.select:
+                faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
+                
+                for face_of_edge_index in faces_of_edge:
+                    if face_of_edge_index == face_index:
+                        edges_of_face.append( edge )
+                        edges_of_face_indexes.append( edge.index )
+                        break
+            
+    
+    return edges_of_face, edges_of_face_indexes
 
 def getPoseBoneVersionOfBone( bone ):
     if not isBone( bone ):

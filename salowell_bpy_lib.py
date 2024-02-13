@@ -764,11 +764,10 @@ def getBonesArmature( bone ):
     
     return armatureObject, armature
 
-def getMeshSelectedEdges( mesh ):
+def get_selected_edges( obj:object ) -> Array | Array:
     mode = bpy.context.object.mode
     bpy.ops.object.mode_set( mode = 'OBJECT' )
-    obj:object = mesh.id_data
-    mesh = obj.data
+    mesh:bpy.types.Mesh = obj.data
     
     selectedEdgeIndexes = []
     selectedEdgeObjs = []

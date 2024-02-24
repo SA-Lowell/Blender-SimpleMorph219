@@ -1,3 +1,4 @@
+#TODO: Switch all mesh operations to bmesh operations. This should drastically increase the speed of these scripts.
 import bpy
 from bpy.props import EnumProperty
 from bpy.types import Operator, Panel
@@ -10,7 +11,7 @@ bl_info = {
     "name": "Simple Morph 219",
     "description": "Suitable for building repeatable meshes that each require unique simple tweaks to the same shape.",
     "author": "S.A. Lowell",
-    "version": (0.10, 1094153, 2024.02, 13.09, 23.39, 1707816219.6),
+    "version": (0.10, 1217832, 2024.02, 24.11, 13.39, 1708773219.7),
     "blender": (4, 0, 2),
     "location": "View3D > N-Panel(Side Panel) > Item > Simple Morph 219",
     "warning": "Currently in beta.",

@@ -136,6 +136,70 @@ class SimpleMorph219BlenderState:
         
         bpy.ops.object.mode_set( mode = self.mode )
 
+def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender_mesh_2:bmesh, mesh_2_face_indexes:Array ):
+    """
+    Pairs up the closest faces from two lists of arrays in two meshes.
+    
+    Parameters
+    ----------
+    blender_mesh_1: bmesh
+        The first bmesh
+    
+    mesh_1_face_indexes: Array
+        An array of face indexes within blender_mesh_1
+    
+    blender_mesh_2: bmesh
+        The second bmesh
+    
+    mesh_2_face_indexes: Array
+        An array of face indexes within blender_mesh_2
+    
+    Returns
+    -------
+        An array of faces paired up in closest order.
+        [
+            [
+                face ID from mesh 1,
+                face ID from mesh 2
+            ],
+            [
+                face ID from mesh 1,
+                face ID from mesh 2
+            ]
+        ]
+    """
+    mesh_1_face_centers:Array = []
+    mesh_2_face_centers:Array = []
+    paired_closest:Array = []
+    
+    for _, mesh_1_face_id in enumerate( mesh_1_face_indexes ):
+        mesh_1_face_centers.append( blender_mesh_1.faces[ mesh_1_face_id ].calc_center_median() )
+    
+    for _, mesh_2_face_id in enumerate( mesh_2_face_indexes ):
+        mesh_2_face_centers.append( blender_mesh_2.faces[ mesh_2_face_id ].calc_center_median() )
+    
+    for mesh_1_face_center_index, mesh_1_face_center in enumerate( mesh_1_face_centers ):
+        last_distance:int = -1
+        current_distance:int = -1
+        mesh_2_face_shortest_distance_index:int = -1
+        
+        for mesh_2_face_center_index, mesh_2_face_center in enumerate( mesh_2_face_centers ):
+            current_distance = ( mesh_1_face_center - mesh_2_face_center ).length
+            
+            if last_distance == -1:
+                mesh_2_face_shortest_distance_index = mesh_2_face_center_index
+            else:
+                if current_distance < last_distance:
+                    mesh_2_face_shortest_distance_index = mesh_2_face_center_index
+            
+            last_distance = current_distance
+        
+        paired_closest.append( [ mesh_1_face_indexes[ mesh_1_face_center_index ], mesh_2_face_indexes[ mesh_2_face_shortest_distance_index ] ] )
+        
+        del mesh_2_face_centers[ mesh_2_face_shortest_distance_index ]
+    
+    return paired_closest
+
 def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) -> Array | Array:
     """
     Retrieves the indexes of every single face the input edge is connected to.

@@ -476,6 +476,63 @@ def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> A
     return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
 
 def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', offset_pct = 0.0, segments = 1, profile = 0.5, affect = 'EDGES', clamp_overlap = False, loop_slide = True, mark_seam = False, mark_sharp = False, material = -1, harden_normals = False, face_strength_mode = 'NONE', miter_outer = 'SHARP', miter_inner = 'SHARP', spread = 0.1, vmesh_method = 'ADJ', release_confirm = False  ) -> Array:
+def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Array | Array | dict:
+    """
+    Takes the selected edges [edges] and separates out edges that form faces and those that do not (those that are orphaned)
+    
+    Parameters
+    ----------
+        obj : bpy.types.Object
+            The object with a bpy.types.Mesh that contains edges found in the edges parameter.
+        
+        edges: Array
+            Contains the IDs of all edges you wish to process from obj.data
+    
+    Returns
+    -------
+        First array contains a list of all orphaned edges
+        Second array contains a list of all edges that form faces
+        Third paramater, a dict, contains a list of all edges that form faces grouped by the faces they form (This dict will, naturally, contain duplicate edges in certain cases, ie: If two or more faces are touching. This dict will be indexed by face IDs)
+    """
+    grouped_edges_by_face:dict = {}
+    face_edges:Array = [] #List of all edges that form full faces
+    orphaned_edges:Array = []
+    
+    isolate_object_select( obj )
+    
+    bpy.ops.object.mode_set( mode = 'EDIT')
+    bpy.ops.mesh.select_mode( type = 'VERT' )
+    bpy.ops.mesh.select_all( action = 'DESELECT' )
+    bpy.ops.mesh.select_mode( type = 'EDGE' )
+    bpy.ops.object.mode_set( mode = 'OBJECT')
+    
+    obj_edge_count:int = len( obj.data.edges )
+    
+    for edge_index in edges:
+        if edge_index < obj_edge_count:
+            obj.data.edges[ edge_index ].select = True
+    
+    bpy.ops.object.mode_set( mode = 'EDIT')
+    bpy.ops.mesh.select_mode( type = 'FACE' )
+    bpy.ops.object.mode_set( mode = 'OBJECT')
+    bpy.ops.object.mode_set( mode = 'EDIT')
+    
+    full_faces = get_selected_faces( obj )[1]
+    
+    for face_index in full_faces:
+        edges_of_face = get_edges_of_face( obj, face_index, 1)[1]
+        grouped_edges_by_face[ face_index ] = edges_of_face
+        
+        for face_edge_index in edges_of_face:
+            if not face_edge_index in face_edges:
+                face_edges.append( face_edge_index )
+    
+    for edge_index in edges:
+        if not edge_index in face_edges:
+            orphaned_edges.append(edge_index)
+    
+    return orphaned_edges, face_edges, grouped_edges_by_face, 
+
     """
     Bevels the currently selected object and returns an array of the newly created faces
 

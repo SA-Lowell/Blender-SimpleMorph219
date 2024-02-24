@@ -1057,6 +1057,16 @@ def pair_edge_vertices( previous_bmesh:bmesh, previous_edge_id:int, connected_pr
     
     return pair_map
 
+def get_edges_of_face_bmesh( blender_mesh:bmesh, face_index:int ) -> Array | Array:
+    edges_of_face:Array = []
+    edges_of_face_indexes:Array = []
+    
+    for edge in blender_mesh.faces[ face_index ].edges:
+        edges_of_face.append( edge )
+        edges_of_face_indexes.append( edge.index )
+    
+    return edges_of_face, edges_of_face_indexes
+
 def get_edges_of_face(obj:bpy.types.Object, face_index:int, select_state:int = 0) -> Array | Array:
     edges_of_face:Array = []
     edges_of_face_indexes:Array = []

@@ -115,6 +115,17 @@ class simple_morph_219_object():
 
         return False
     
+    def get_layer_map_from_name( self, layer_name:str ) -> simple_morph_219_layer_map:
+        if layer_name == ''    :
+            return None
+        
+        if layer_name in self.layer_maps:
+            return self.layer_maps[ layer_name ] 
+        
+        self.layer_maps[ layer_name ] = simple_morph_219_layer_map()
+        
+        return self.layer_maps[ layer_name ]
+
     def gen_selected_bevels_map(self, layer_index_key ) -> None:
         real_corner_prop_keys = get_all_real_corner_custom_prop_keys( self.obj )
         layer_index = get_real_corner_custom_prop_key_index( self.obj, layer_index_key )

@@ -915,22 +915,26 @@ def getBonesArmature( bone ):
     return armatureObject, armature
 
 def get_selected_edges( obj:object ) -> Array | Array:
-    mode = bpy.context.object.mode
+    mode:str = bpy.context.object.mode
     bpy.ops.object.mode_set( mode = 'OBJECT' )
     mesh:bpy.types.Mesh = obj.data
     
-    selectedEdgeIndexes = []
-    selectedEdgeObjs = []
+    selected_edge_indexes:Array = []
+    selected_edge_objects:Array = []
     
     if type( mesh ) == bpy.types.Mesh:
-        for edge in mesh.edges:
-            if edge.select:
-                selectedEdgeIndexes.append( edge.index )
-                selectedEdgeObjs.append( edge )
+        selected_edge_objects = [ edge for edge in mesh.edges if edge.select ]
+        
+        edge_count = len( selected_edge_objects )
+        
+        selected_edge_indexes = [-1] * edge_count
+        
+        for selected_edge_object_index in range(0, edge_count):
+            selected_edge_indexes[ selected_edge_object_index ] = selected_edge_objects[ selected_edge_object_index ].index
     
     bpy.ops.object.mode_set( mode = mode )
     
-    return selectedEdgeObjs, selectedEdgeIndexes
+    return selected_edge_objects, selected_edge_indexes
 
 def getBmeshSelectedEdges(bm):
     selectedEdgeIndexes = []

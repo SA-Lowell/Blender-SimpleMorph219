@@ -200,6 +200,85 @@ def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender
     
     return paired_closest
 
+#select_state might seem weird but it's important to use when a calling function very specifically needs faces that only exist in a certain select state.
+#TODO: The if statements that select_state uses are weird, but I never got around to changing them before fully testing everything.
+def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0 ) -> Array | Array:
+    """
+    Retrieves the indexes of every single face the input edge is connected to.
+
+    Parameters
+    ----------
+    obj: bmesh
+        The bmesh that edge belongs to. This is the bmesh that will be parsed for all connected faces.
+
+    edge: int
+        Index of the edge you want to find all connected faces of.
+    
+    select_state : int, default 0
+        Types of edges to return
+            0 = all,
+            1 = selected only,
+            -1 = unselected only
+    
+    Returns
+    -------
+        An array of indexes for each face that is connected to the input edge.
+    """
+    owner_faces:Array = []
+    owner_faces_indexes:Array = []
+    
+    mesh = blender_mesh
+    found_first:bool = False
+
+    if hasattr( mesh.verts, "ensure_lookup_table" ): 
+        mesh.verts.ensure_lookup_table()
+    if hasattr( mesh.edges, "ensure_lookup_table" ): 
+        mesh.edges.ensure_lookup_table()
+    if hasattr( mesh.faces, "ensure_lookup_table" ): 
+        mesh.faces.ensure_lookup_table()
+    
+    if select_state == 1:
+        for face in mesh.faces:
+            found_first = False
+            
+            if not face in owner_faces and face.select:
+                for _, value in enumerate( face.verts ):
+                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
+    elif select_state == -1:
+        for face in mesh.faces:
+            found_first = False
+            
+            if not face in owner_faces and not face.select:
+                for _, value in enumerate( face.verts ):
+                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
+    else:
+        for face in mesh.faces:
+            found_first = False
+            
+            if not face in owner_faces:
+                for _, value in enumerate( face.verts ):
+                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
+                        if found_first:
+                            owner_faces.append( face )
+                            owner_faces_indexes.append( face.index )
+                            break
+                        
+                        found_first = True
+    
+    return owner_faces, owner_faces_indexes
+
 def get_faces_of_edge( obj:bpy.types.Object, edge:int, select_state:int = 0 ) -> Array | Array:
     """
     Retrieves the indexes of every single face the input edge is connected to.

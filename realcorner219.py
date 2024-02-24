@@ -126,6 +126,175 @@ class simple_morph_219_object():
         
         return self.layer_maps[ layer_name ]
 
+    def map_beveled_mesh_to_previous_layer( self, original_mesh:bmesh, new_mesh:bmesh, new_faces:Array, new_layer_map:simple_morph_219_layer_map ) -> dict | dict | dict:
+        """
+        Maps all edges, vertices, and faces of new_mesh back to original_mesh. All vertices, edges, and faces that are part of the bevel operation are not included.
+        
+        Parameters
+        ----------
+        original_mesh : bmesh
+            The pre-bevel mesh
+        
+        new_mesh : bmesh
+            The post bevel mesh. This MUST be a mesh created via a bevel from previous_mesh
+        
+        new_faces : Array
+            IDs of faces created from the bevel
+        
+        new_layer_map : simple_morph_219_layer_map
+            layer map for the new mesh.
+        
+        Returns
+        -------
+            A tuple of 3 dictionaries with vertices, edges, and faces mapped back in the formats:
+                vertices:
+                {
+                    original_vertex_id_0 : new_vertex_id_0,
+                    ..........
+                    original_vertex_id_n : new_vertex_id_n,
+                }
+                edges:
+                {
+                    original_edge_id_0 : new_edge_id_0,
+                    ..........
+                    original_edge_id_n : new_edge_id_n,
+                }
+                faces:
+                {
+                    original_face_id_0 : new_face_id_0,
+                    ..........
+                    original_face_id_n : new_face_id_n,
+                }
+        """
+        processed_original_faces:Array = []
+        processed_new_faces:Array = []
+        queued_original_faces:Array = []
+        queued_new_faces:Array = []
+        
+        processed_original_edges:Array = []
+        processed_new_edges:Array = []
+        
+        vertex_map:dict = {}
+        edge_map:dict = {}
+        face_map:dict = {}
+        
+        for last_edge_index in new_layer_map.beveled_endstart_edges_to_last_edge:
+            original_bmesh_faces_from_edge_tmp:Array = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, last_edge_index )[1]
+            original_bmesh_faces_from_edge:Array = []
+            
+            for original_bmesh_face_from_edge_id in original_bmesh_faces_from_edge_tmp:
+                if not original_bmesh_face_from_edge_id in processed_original_faces:
+                    original_bmesh_faces_from_edge.append( original_bmesh_face_from_edge_id )
+                    processed_original_faces.append( original_bmesh_face_from_edge_id )
+            
+            if len( original_bmesh_faces_from_edge ) == 0:
+                continue
+            
+            new_edge_indexes = new_layer_map.beveled_endstart_edges_to_last_edge[ last_edge_index ]
+            
+            for new_edge_index in new_edge_indexes:
+                new_bmesh_faces_from_edge_tmp:Array = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, new_edge_index )[1]
+                new_bmesh_faces_from_edge:Array = []
+                
+                for _, new_bmesh_face_from_edge_id in enumerate( new_bmesh_faces_from_edge_tmp ):
+                    if not new_bmesh_face_from_edge_id in new_faces and not new_bmesh_face_from_edge_id in processed_new_faces:
+                        new_bmesh_faces_from_edge.append( new_bmesh_face_from_edge_id )
+                        processed_new_faces.append( new_bmesh_face_from_edge_id )
+                
+                if len( new_bmesh_faces_from_edge ) == 0:
+                    continue
+                
+                paired = salowell_bpy_lib.pair_closest_faces( new_mesh, new_bmesh_faces_from_edge, original_mesh, original_bmesh_faces_from_edge )
+                
+                for pair in paired:
+                    face_map[pair[1]] = pair[0]
+                    
+                    new_edges:Array = salowell_bpy_lib.get_edges_of_face_bmesh( new_mesh, pair[0] )[1]
+                    original_edges:Array = salowell_bpy_lib.get_edges_of_face_bmesh( original_mesh, pair[1] )[1]
+                    
+                    vertices_on_new_endstart_edge:Array = []
+                    
+                    for new_edges_from_last_ids in new_layer_map.beveled_endstart_edges_to_last_edge:
+                        for new_edges_from_last_id in new_layer_map.beveled_endstart_edges_to_last_edge[ new_edges_from_last_ids ]:
+                            if not new_mesh.edges[ new_edges_from_last_id ].verts[0].index in vertices_on_new_endstart_edge:
+                                vertices_on_new_endstart_edge.append( new_mesh.edges[ new_edges_from_last_id ].verts[0].index )
+                            
+                            if not new_mesh.edges[ new_edges_from_last_id ].verts[1].index in vertices_on_new_endstart_edge:
+                                vertices_on_new_endstart_edge.append( new_mesh.edges[ new_edges_from_last_id ].verts[1].index )
+                    
+                    for index, _ in enumerate(new_edges):
+                        if not new_edges[ index ] in processed_new_edges and not original_edges[ index ] in new_layer_map.beveled_endstart_edges_to_last_edge:
+                            edge_map[ original_edges[ index ] ] = new_edges[ index ]
+                            
+                            connected_previous_edge_id:int = original_edges[ index - 1 ]
+                            connected_next_edge_id:int = new_edges[ index - 1 ]
+                            
+                            paired_vertices:dict = salowell_bpy_lib.pair_edge_vertices( original_mesh, original_edges[ index ], connected_previous_edge_id, new_mesh, new_edges[ index ], connected_next_edge_id )
+                            
+                            for _, paired_previous_id in enumerate( paired_vertices ):
+                                if not paired_previous_id in vertex_map and not paired_vertices[ paired_previous_id ] in vertices_on_new_endstart_edge:
+                                    vertex_map[ paired_previous_id ] = paired_vertices[ paired_previous_id ]
+                            
+                            processed_original_edges.append( original_edges[ index ] )
+                            processed_new_edges.append( new_edges[ index ] )
+                        
+                        new_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, new_edges[ index ] )[1]
+                        original_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, original_edges[ index ] )[1]
+                        
+                        for face_of_edge_index, face_of_edge in enumerate( new_faces_of_edge ):
+                            if not original_faces_of_edge[ face_of_edge_index ] in processed_original_faces and not original_faces_of_edge[ face_of_edge_index ] in queued_original_faces:
+                                queued_original_faces.append( original_faces_of_edge[ face_of_edge_index ] )
+                            
+                            if not face_of_edge in new_faces and not face_of_edge in processed_new_faces and not face_of_edge in queued_new_faces:
+                                queued_new_faces.append( face_of_edge )
+                
+                while len( queued_new_faces ) > 0:
+                    queue_new:int = queued_new_faces.pop()
+                    queue_original:int = queued_original_faces.pop()
+                    processed_original_faces.append( queue_original )
+                    processed_new_faces.append( queue_new )
+                    
+                    face_map[ queue_original ] = queue_new
+                    
+                    new_edges = salowell_bpy_lib.get_edges_of_face_bmesh( new_mesh, queue_new )[1]
+                    original_edges = salowell_bpy_lib.get_edges_of_face_bmesh( original_mesh, queue_original )[1]
+                    
+                    vertices_on_new_endstart_edge:Array = []
+                    
+                    for new_edges_from_last_ids in new_layer_map.beveled_endstart_edges_to_last_edge:
+                        for new_edges_from_last_id in new_layer_map.beveled_endstart_edges_to_last_edge[ new_edges_from_last_ids ]:
+                            if not new_mesh.edges[ new_edges_from_last_id ].verts[0].index in vertices_on_new_endstart_edge:
+                                vertices_on_new_endstart_edge.append( new_mesh.edges[ new_edges_from_last_id ].verts[0].index )
+                            
+                            if not new_mesh.edges[ new_edges_from_last_id ].verts[1].index in vertices_on_new_endstart_edge:
+                                vertices_on_new_endstart_edge.append( new_mesh.edges[ new_edges_from_last_id ].verts[1].index )
+                    
+                    for index, new_edge_id in enumerate( new_edges ):
+                        if not new_edge_id in processed_new_edges and not original_edges[ index ] in new_layer_map.beveled_endstart_edges_to_last_edge:
+                            edge_map[ original_edges[ index ] ] = new_edge_id
+                            
+                            connected_previous_edge_id:int = original_edges[ index - 1 ]
+                            connected_next_edge_id:int = new_edges[ index - 1 ]
+                            
+                            paired_vertices:dict = salowell_bpy_lib.pair_edge_vertices( original_mesh, original_edges[ index ], connected_previous_edge_id, new_mesh, new_edge_id, connected_next_edge_id )
+                            
+                            for paired_index, paired_previous_id in enumerate( paired_vertices ):
+                                if not paired_previous_id in vertex_map and not paired_vertices[ paired_previous_id ] in vertices_on_new_endstart_edge:
+                                    vertex_map[ paired_previous_id ] = paired_vertices[ paired_previous_id ]
+                            
+                            processed_original_edges.append( original_edges[ index ] )
+                            processed_new_edges.append( new_edge_id )
+                        
+                        new_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, new_edges[ index ] )[1]
+                        original_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, original_edges[ index ] )[1]
+                        
+                        for face_of_edge_index, face_of_edge in enumerate( new_faces_of_edge ):
+                            if not face_of_edge in new_faces and not face_of_edge in processed_new_faces and not face_of_edge in queued_new_faces and not original_faces_of_edge[ face_of_edge_index ] in processed_original_faces and not original_faces_of_edge[ face_of_edge_index ] in queued_original_faces:
+                                queued_new_faces.append( face_of_edge )
+                                queued_original_faces.append( original_faces_of_edge[ face_of_edge_index ] )
+        
+        return vertex_map, edge_map, face_map
+
     def gen_selected_bevels_map(self, layer_index_key ) -> None:
         real_corner_prop_keys = get_all_real_corner_custom_prop_keys( self.obj )
         layer_index = get_real_corner_custom_prop_key_index( self.obj, layer_index_key )

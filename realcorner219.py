@@ -15,6 +15,73 @@ from . import salowell_bpy_lib, simplemorph219
 
 realCorner219PropName = 'realCorner219_'
 
+class simple_morph_219_layer_map():
+    """
+    A comprehensive map of a single layer in a Simple Morph 219 object
+    """
+    blender_mesh:bmesh = None#The bmesh for this layer
+    
+    beveled_faces_to_original_edge:dict = {}#The newely beveled faces mapped to the original layer edge.
+    beveled_faces_to_last_edge:dict = {}#The newely beveled faces mapped to the previous layer edge.
+    
+    beveled_vertices_to_original_edge:dict = {}#The newely beveled vertices mapped back to the original layer edge
+    beveled_vertices_to_last_edge:dict = {}#The newely beveled vertices mapped back to the last edge.
+    
+    beveled_edges_to_original_edge:dict = {}
+    beveled_edges_to_last_edge:dict = {}
+    
+    beveled_terminating_edges_to_last_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
+    beveled_terminating_edges_to_original_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
+    
+    beveled_median_edges_to_last_edge:dict = {}#Edges formed between two beveled corners.
+    beveled_median_edges_to_original_edge:dict = {}#Edges formed between two beveled corners.
+    
+    beveled_endstart_edges_to_original_edge:dict = {} #The edges that define the start and end of a bevel
+    beveled_endstart_edges_to_last_edge:dict = {} #The edges that define the start and end of a bevel
+    
+    beveled_median_edges_to_last_extend_edge:dict = {}#Edges formed between two beveled edges linked to the previous edge they extend.
+    
+    beveled_terminating_vertices_to_last_edge:dict = {}
+    beveled_terminating_vertices_to_original_edge:dict = {}
+    
+    beveled_median_vertices_to_last_edge:dict = {}
+    beveled_median_vertices_to_original_edge:dict = {}
+
+    def set_bmesh( self, obj:bpy.types.Object ):
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
+        
+        self.blender_mesh = bmesh.new()
+        self.blender_mesh.from_mesh( obj.data )
+        
+    def set_empty( self ) -> None:
+        self.blender_mesh = None
+        
+        self.beveled_faces_to_original_edge = {}
+        self.beveled_faces_to_last_edge = {}
+        
+        self.beveled_vertices_to_original_edge = {}
+        self.beveled_vertices_to_last_edge = {}
+        
+        self.beveled_edges_to_original_edge = {}
+        self.beveled_edges_to_last_edge = {}
+        
+        self.beveled_terminating_edges_to_last_edge = {}
+        self.beveled_terminating_edges_to_original_edge = {}
+        
+        self.beveled_median_edges_to_last_edge = {}
+        self.beveled_median_edges_to_original_edge = {}
+        
+        self.beveled_endstart_edges_to_original_edge = {}
+        self.beveled_endstart_edges_to_last_edge = {}
+        
+        self.beveled_median_edges_to_last_extend_edge = {}
+        
+        self.beveled_terminating_vertices_to_last_edge = {}
+        self.beveled_terminating_vertices_to_original_edge = {}
+        
+        self.beveled_median_vertices_to_last_edge = {}
+        self.beveled_median_vertices_to_original_edge = {}
+
 class simple_morph_219_object():
     """
     Stores a comprehensive history of any object generated through SimpleMorph219

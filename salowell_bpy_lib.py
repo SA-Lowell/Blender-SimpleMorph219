@@ -985,6 +985,78 @@ def getEditBoneVersionOfBoneFromName( boneName, armatureObject ):
     
     return armatureObject.data.edit_bones[ boneName ]
 
+def pair_edge_vertices( previous_bmesh:bmesh, previous_edge_id:int, connected_previous_edge_id:int, next_bmesh:bmesh, next_edge_id:int, connected_next_edge_id:int ) -> dict:
+    """
+    Pairs up vertices along two connected edges on two different mesh objects.
+    
+    Edges always have the same order (counter clockwise) on every face and seem to have the same starting point, but vertices are a different story. This solve the issue by mapping them back correctly.
+    The edges need to be pre-calculated before passing them in, otherwise the mapping will be incorrect if you don't use mirrored edges between the two bmeshes.
+
+    Parameters
+    ----------
+    previous_bmesh : bmesh
+        The pre-bevel mesh
+    
+    previous_edge_id : int
+        The first edge of the pre bevel mesh
+    
+    connected_previous_edge_id : int
+        An edge connected to the previous_edge_id
+    
+    next_bmesh : bmesh
+        The post bevel mesh. This MUST be a mesh created via a bevel from previous_mesh
+    
+    next_edge_id : int
+        The first edge of the post bevel mesh. MUST map back to previous_edge_id
+    
+    connected_next_edge_id : int
+        An edge connected to the next_edge_id. MUST map back to connected_previous_edge_id
+
+    Returns
+    -------
+        A dict that contains the vertex IDs mapped onto each other ie: { previous_vertex_id : next_vertex_id }
+    """
+    pair_map:dict = {}
+    previous_edge:bmesh.types.BMEdge = previous_bmesh.edges[ previous_edge_id ]
+    connected_previous_edge:bmesh.types.BMEdge = previous_bmesh.edges[ connected_previous_edge_id ]
+    
+    next_edge:bmesh.types.BMEdge = next_bmesh.edges[ next_edge_id ]
+    connected_next_edge:bmesh.types.BMEdge = next_bmesh.edges[ connected_next_edge_id ]
+    
+    #[0] = isolated vertex on previous, [1] = Overlapped vertex between previous and previous connected, [2] = isolated vertex on previous connected
+    previous_vertex_map:Array = [0] * 3
+    #[0] = isolated vertex on previous, [1] = Overlapped vertex between previous and previous connected, [2] = isolated vertex on previous connected
+    next_vertex_map:Array = [0] * 3
+    
+    if previous_edge.verts[0] in connected_previous_edge.verts:
+        previous_vertex_map[1] = previous_edge.verts[0].index
+        previous_vertex_map[0] = previous_edge.verts[1].index
+    else:
+        previous_vertex_map[1] = previous_edge.verts[1].index
+        previous_vertex_map[0] = previous_edge.verts[0].index
+    
+    if connected_previous_edge.verts[0] in previous_edge.verts:
+        previous_vertex_map[2] = connected_previous_edge.verts[1].index
+    else:
+        previous_vertex_map[2] = connected_previous_edge.verts[0].index
+    
+    if next_edge.verts[0] in connected_next_edge.verts:
+        next_vertex_map[1] = next_edge.verts[0].index
+        next_vertex_map[0] = next_edge.verts[1].index
+    else:
+        next_vertex_map[1] = next_edge.verts[1].index
+        next_vertex_map[0] = next_edge.verts[0].index
+    
+    if connected_next_edge.verts[0] in next_edge.verts:
+        next_vertex_map[2] = connected_next_edge.verts[1].index
+    else:
+        next_vertex_map[2] = connected_next_edge.verts[0].index
+    
+    for index, previous in enumerate( previous_vertex_map ):
+        pair_map[ previous ] = next_vertex_map[ index ]
+    
+    return pair_map
+
 def get_edges_of_face(obj:bpy.types.Object, face_index:int, select_state:int = 0) -> Array | Array:
     edges_of_face:Array = []
     edges_of_face_indexes:Array = []

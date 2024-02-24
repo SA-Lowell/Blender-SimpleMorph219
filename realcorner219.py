@@ -118,7 +118,7 @@ class simple_morph_219_object():
             self.base_blender_mesh.from_mesh(bpy.context.scene.objects[ object_name ].data)
             
             return True
-
+        
         return False
     
     def get_layer_map_from_name( self, layer_name:str ) -> simple_morph_219_layer_map:
@@ -628,7 +628,7 @@ def createSupportingEdgeLoopsAroundSelectedFaces( obj, supporting_edge_loop_leng
                     bpy.ops.object.mode_set( mode = 'EDIT')
                     bpy.ops.object.mode_set( mode = 'OBJECT')
                     
-                    edges_of_vertex = salowell_bpy_lib.get_edge_indexes_from_vertex_index( bpy.context.selected_objects[0].data, vertex, -1 )
+                    edges_of_vertex = salowell_bpy_lib.get_edges_of_vertex( bpy.context.selected_objects[0].data, vertex, -1 )
                     
                     #Looping through the unbeveled edges connected to one of the vertices of this bounding edge.
                     for edge_of_vertex in edges_of_vertex:
@@ -711,11 +711,9 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked
         
         if self.action == 'TEST_QUICK':
+            print('QUICK_TEST')
             test_obj = simple_morph_219_object(context.selected_objects[0].name)
             print(test_obj.gen_selected_bevels_map('realCorner219_0'))
-            #supporting_edge_loop_length:float = 0.1
-            #createSupportingEdgeLoopsAroundSelectedFaces( bpy.context.selected_objects[0], supporting_edge_loop_length )
-            
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':
             pass
@@ -1058,29 +1056,6 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             realCorner219CurrentState = realCorner219States.UPDATING_LAYER
             realCorner219SelectedBaseObjName = selectedObject.name
             salowell_bpy_lib.isolate_object_select( selectedObject )
-
-            realCornerPropDict = realCornerPropStringToDict( bpy.data.objects[ self.originalObjectName ][ self.real_corner_layer_name ] )
-            
-            self.affect = salowell_bpy_lib.bevel_affect_items( realCornerPropDict[ 'bevel_settings' ][ 'affect' ] ).name
-            self.offset_type = salowell_bpy_lib.bevel_offset_type_items( realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] ).name
-            self.offset = realCornerPropDict[ 'bevel_settings' ][ 'offset' ]
-            self.offset_pct = realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ]
-            self.segments = realCornerPropDict[ 'bevel_settings' ][ 'segments' ]
-            self.profile = realCornerPropDict[ 'bevel_settings' ][ 'profile' ]
-            self.material = realCornerPropDict[ 'bevel_settings' ][ 'material' ]
-            self.harden_normals = realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ]
-            self.clamp_overlap = realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ]
-            self.loop_slide = realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ]
-            self.mark_seam = realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ]
-            self.mark_sharp = realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ]
-            self.miter_outer = salowell_bpy_lib.bevel_miter_outer_items( realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ] ).name
-            self.miter_inner = salowell_bpy_lib.bevel_miter_inner_items( realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ] ).name
-            self.spread = realCornerPropDict[ 'bevel_settings' ][ 'spread' ]
-            self.vmesh_method = salowell_bpy_lib.bevel_vmesh_method_items( realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] ).name
-            self.face_strength_mode = salowell_bpy_lib.bevel_face_strength_mode_items( realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] ).name
-            self.profile_type = salowell_bpy_lib.bevel_profile_type_items( realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] ).name
-            
-            bpy.data.objects[ self.originalObjectName ][ self.real_corner_layer_name ] = realCornerPropDictToString( realCornerPropDict )
             
             bpy.ops.object.mode_set( mode = 'OBJECT')
             bpy.ops.object.duplicate()
@@ -1097,6 +1072,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
         else:
             realcorner219HandleSelectDeselectFunctionLocked = True
             update_real_corner_bevel_values_locked = True
+            
             bpy.ops.object.mode_set( mode = 'OBJECT')
             
             if selectedObject.name != self.originalObjectName:
@@ -1240,10 +1216,6 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         pass
 
 def selectedEdgesToCustomPropArray( obj ):
-    me = obj.data
-    bm:bmesh = bmesh.new()
-    bm.from_mesh( me )
-    
     return salowell_bpy_lib.get_selected_edges( obj )[1]
 
 def createEmptyRealCornerPropDict() -> dict:

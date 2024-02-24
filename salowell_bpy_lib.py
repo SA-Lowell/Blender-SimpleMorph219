@@ -1204,7 +1204,7 @@ def get_edges_of_face_bmesh( blender_mesh:bmesh, face_index:int ) -> Array | Arr
     
     return edges_of_face, edges_of_face_indexes
 
-def get_edges_of_face(obj:bpy.types.Object, face_index:int, select_state:int = 0) -> Array | Array:
+def get_edges_of_face( obj:bpy.types.Object, face_index:int, select_state:int = 0 ) -> Array | Array:
     edges_of_face:Array = []
     edges_of_face_indexes:Array = []
     

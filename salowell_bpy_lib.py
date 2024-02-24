@@ -1071,37 +1071,22 @@ def get_edges_of_face(obj:bpy.types.Object, face_index:int, select_state:int = 0
     edges_of_face:Array = []
     edges_of_face_indexes:Array = []
     
-    if select_state == 0:
-        for edge in obj.data.edges:
-            faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
-            
-            for face_of_edge_index in faces_of_edge:
-                if face_of_edge_index == face_index:
-                    edges_of_face.append( edge )
-                    edges_of_face_indexes.append( edge.index )
-                    break
-    elif select_state == 1:
-        for edge in obj.data.edges:
-            if edge.select:
-                faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
-                
-                for face_of_edge_index in faces_of_edge:
-                    if face_of_edge_index == face_index:
-                        edges_of_face.append( edge )
-                        edges_of_face_indexes.append( edge.index )
-                        break
-    else:
-        for edge in obj.data.edges:
-            if not edge.select:
-                faces_of_edge:Array = get_faces_of_edge( obj, edge.index, 0 )[1]
-                
-                for face_of_edge_index in faces_of_edge:
-                    if face_of_edge_index == face_index:
-                        edges_of_face.append( edge )
-                        edges_of_face_indexes.append( edge.index )
-                        break
-            
+    mesh = obj.data
+    poly = obj.data.polygons[ face_index ]
     
+    if select_state == 0:
+        edges_of_face = [ mesh.edges[ mesh.loops[i].edge_index ] for i in poly.loop_indices ]
+    elif select_state == 1:
+        edges_of_face = [ mesh.edges[ mesh.loops[i].edge_index ] for i in poly.loop_indices if mesh.edges[ mesh.loops[i].edge_index ].select ]
+    else:
+        edges_of_face = [ mesh.edges[ mesh.loops[i].edge_index ] for i in poly.loop_indices if not mesh.edges[ mesh.loops[i].edge_index ].select ] 
+    
+    edge_count:int = len( edges_of_face )
+    edges_of_face_indexes:Array = [0] * edge_count
+    
+    for index in range( 0, edge_count ):
+        edges_of_face_indexes[ index ] = edges_of_face[ index ].index
+        
     return edges_of_face, edges_of_face_indexes
 
 def getPoseBoneVersionOfBone( bone ):

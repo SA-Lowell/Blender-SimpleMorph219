@@ -475,7 +475,6 @@ def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> A
     
     return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
 
-def bevel( offset_type = 'OFFSET', offset = 0.0, profile_type = 'SUPERELLIPSE', offset_pct = 0.0, segments = 1, profile = 0.5, affect = 'EDGES', clamp_overlap = False, loop_slide = True, mark_seam = False, mark_sharp = False, material = -1, harden_normals = False, face_strength_mode = 'NONE', miter_outer = 'SHARP', miter_inner = 'SHARP', spread = 0.1, vmesh_method = 'ADJ', release_confirm = False  ) -> Array:
 def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Array | Array | dict:
     """
     Takes the selected edges [edges] and separates out edges that form faces and those that do not (those that are orphaned)
@@ -533,45 +532,128 @@ def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Ar
     
     return orphaned_edges, face_edges, grouped_edges_by_face, 
 
+def bevel( offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'SUPERELLIPSE', offset_pct:float = 0.0, segments:int = 1, profile:float = 0.5, affect:str = 'EDGES', clamp_overlap:bool = False, loop_slide:bool = True, mark_seam:bool = False, mark_sharp:bool = False, material:int = -1, harden_normals:str = False, face_strength_mode:str = 'NONE', miter_outer:str = 'SHARP', miter_inner:str = 'SHARP', spread:float = 0.1, vmesh_method:str = 'ADJ', release_confirm:bool = False, edge_selection_type:int = 3  ) -> Array | Array:
     """
     Bevels the currently selected object and returns an array of the newly created faces
 
     Parameters
     ----------
-        All parameters match those found in bpy.ops.mesh.bevel ( https://docs.blender.org/api/current/bpy.ops.mesh.html#bpy.ops.mesh.bevel )
+        All parameters match those found in bpy.ops.mesh.bevel ( https://docs.blender.org/api/current/bpy.ops.mesh.html#bpy.ops.mesh.bevel ) excluding "edge_selection_type"
+        edge_selection_type:int
+            0 = orphaned edges only
+            1 = full faces only (All edges form full faces and non are orphaned)
+            2 = orphaned and full face (Do orphaned first)
+            3 = orphaned and full face (Do full face first)
     
     Returns
     -------
         An array of the newly created faces (Note: Sometimes their IDs can match previous face IDs from before the bevel was performed.)
     """
+    if edge_selection_type < 0:
+        edge_selection_type = 0
+    elif edge_selection_type > 3:
+        edge_selection_type = 3
+    
+    selected_faces:Array = []
+    selected_face_indexes:Array = []
+    
     bpy.ops.object.mode_set( mode = 'EDIT')
-    bpy.ops.mesh.select_mode( type = 'FACE' )
     
-    bpy.ops.mesh.bevel(
-        offset_type = offset_type, 
-        offset = offset, 
-        profile_type = profile_type, 
-        offset_pct = offset_pct, 
-        segments = segments, 
-        profile = profile, 
-        affect = affect,
-        clamp_overlap = clamp_overlap, 
-        loop_slide = loop_slide, 
-        mark_seam = mark_seam, 
-        mark_sharp = mark_sharp, 
-        material = material, 
-        harden_normals = harden_normals, 
-        face_strength_mode = face_strength_mode, 
-        miter_outer = miter_outer, 
-        miter_inner = miter_inner, 
-        spread = spread, 
-        vmesh_method = vmesh_method, 
-        release_confirm = release_confirm
-    )
+    bpy.ops.mesh.select_mode( type = 'EDGE' )
     
+    obj = bpy.context.active_object
+    
+    mesh = obj.data
+    
+    selected_edges = get_selected_edges( obj )[1]
+    
+    orphaned_edges, faced_edges = separate_orphaned_and_faced_edges( obj, selected_edges) [0:2]
+    
+    has_orphaned_edges = True if len( orphaned_edges ) > 0 else False
+    has_faced_edges = True if len( faced_edges ) > 0 else False
+    
+    if edge_selection_type == 0 and not has_orphaned_edges:
+        return []
+    elif edge_selection_type == 1 and not has_faced_edges:
+        return []
+    elif (edge_selection_type == 2 or edge_selection_type == 3) and not has_orphaned_edges and not has_faced_edges:
+        return []
+    
+    loops:int = 1
+    
+    if edge_selection_type == 0:
+        edge_mode = 0
+        bpy.ops.mesh.select_mode( type = 'EDGE' )
+    elif edge_selection_type == 1:
+        edge_mode = 1
+        bpy.ops.mesh.select_mode( type = 'FACE' )
+    elif edge_selection_type == 2:
+        edge_mode = 0
+        bpy.ops.mesh.select_mode( type = 'EDGE' )
+        loops = 2
+    elif edge_selection_type == 3:
+        edge_mode = 1
+        bpy.ops.mesh.select_mode( type = 'FACE' )
+        loops = 2
+    
+    for i in range(loops):
+        if i == 1 and edge_selection_type == 3:
+            edge_mode = 0
+        elif i == 1 and edge_selection_type == 2:
+            edge_mode = 1
+        
+        edges_to_select:Array = []
+        
+        bpy.ops.object.mode_set( mode = 'EDIT')
+        bpy.ops.mesh.select_mode( type = 'VERT' )
+        bpy.ops.mesh.select_all( action = 'DESELECT' )
+        
+        if edge_mode == 1:
+            bpy.ops.mesh.select_mode( type = 'FACE' )
+            edges_to_select = faced_edges
+        else:
+            bpy.ops.mesh.select_mode( type = 'EDGE' )
+            edges_to_select = orphaned_edges
+        
+        bpy.ops.object.mode_set( mode = 'OBJECT')
+        
+        for edge_id in edges_to_select:
+            bpy.context.selected_objects[0].data.edges[edge_id].select = True
+        
+        bpy.ops.object.mode_set( mode = 'EDIT')
+        
+        bpy.ops.mesh.bevel(
+            offset_type = offset_type, 
+            offset = offset, 
+            profile_type = profile_type, 
+            offset_pct = offset_pct, 
+            segments = segments, 
+            profile = profile, 
+            affect = affect,
+            clamp_overlap = clamp_overlap, 
+            loop_slide = loop_slide, 
+            mark_seam = mark_seam, 
+            mark_sharp = mark_sharp, 
+            material = material, 
+            harden_normals = harden_normals, 
+            face_strength_mode = face_strength_mode, 
+            miter_outer = miter_outer, 
+            miter_inner = miter_inner, 
+            spread = spread, 
+            vmesh_method = vmesh_method, 
+            release_confirm = release_confirm
+        )
+        
+        bpy.ops.object.mode_set( mode = 'OBJECT')
+        
+        faces:Array = get_selected_faces( obj )
+        
+        selected_faces += faces[0]
+        selected_face_indexes += faces[1]
+
     bpy.ops.object.mode_set( mode = 'OBJECT')
     
-    return get_selected_faces( bpy.context.selected_objects[0] )
+    return selected_faces, selected_face_indexes
     
 def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array | Array | Array | Array:
     """

@@ -1089,8 +1089,10 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             updatedObject[ simplemorph219.simpleMorph219BaseName ] = False
             salowell_bpy_lib.isolate_object_select( updatedObject )
             realCorner219ModifiedObjName = updatedObject.name
-            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
             self.placeholderObjectName = context.selected_objects[0].name
+            
+            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
+                
             realcorner219HandleSelectDeselectFunctionLocked = False
         else:
             realcorner219HandleSelectDeselectFunctionLocked = True
@@ -1447,9 +1449,9 @@ def realcorner219HandleSelectDeselect( scene ) -> None:
                         obj.select_set( True )
             
             realCorner219CurrentState = realCorner219States.NONE
-            bpy.data.objects[ realCorner219SelectedBaseObjName ].hide_viewport = False
             
-            bpy.ops.object.mode_set( mode = currentMode )
+            bpy.data.objects[ realCorner219SelectedBaseObjName ].hide_viewport = False
+            bpy.data.objects[ realCorner219SelectedBaseObjName ].select_set( True )
     elif realCorner219CurrentState == realCorner219States.UPDATING_LAYER:
         if numOfSelObjs == 0 or numOfSelObjs > 1:
             setRealCorner219ModeToNone = True

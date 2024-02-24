@@ -1359,13 +1359,15 @@ def genRealCornerMeshAtPrevIndex( obj, layerIndexKey ) -> None:
         PropKeysArr = get_all_real_corner_custom_prop_keys( obj )
         gen_real_corner_mesh( obj, PropKeysArr[ propKeyIndex ] )
 
-def gen_real_corner_mesh( obj, layerIndexKey ) -> None:
+def gen_real_corner_mesh( obj, layerIndexKey ) -> Array | Array:
+    selected_face_objects:Array = []
+    selected_face_indexes:Array = []
+    
     realCornerPropKeys = get_all_real_corner_custom_prop_keys( obj )
     layerIndex = get_real_corner_custom_prop_key_index( obj, layerIndexKey )
     
-    bpy.ops.object.mode_set( mode = 'EDIT')
-    
     for propKey in range( 0, layerIndex + 1 ):
+        bpy.ops.object.mode_set( mode = 'EDIT')
         bpy.ops.mesh.select_mode( type = 'EDGE' )
         bpy.ops.mesh.select_all( action = 'DESELECT' )
         
@@ -1381,10 +1383,24 @@ def gen_real_corner_mesh( obj, layerIndexKey ) -> None:
         for i in bpy.context.selected_objects[0].data.vertices:
             i.select = False
         
-        for edgeIndex in propDic[ 'edges' ]:
-            bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
+        bpy.ops.object.mode_set( mode = 'EDIT' )
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
         
-        return salowell_bpy_lib.bevel(
+        grouped_faces = salowell_bpy_lib.separate_orphaned_and_faced_edges(bpy.context.selected_objects[0], propDic[ 'edges' ])
+        bpy.ops.object.mode_set( mode = 'OBJECT' )
+        
+        edge_count:int = len( bpy.context.selected_objects[0].data.edges )
+        
+        for edgeIndex in propDic[ 'edges' ]:
+            if edgeIndex < edge_count:
+                bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
+        
+        edge_selection_type = 0
+        
+        if len(grouped_faces[1]) > 0:
+            edge_selection_type = 1
+        
+        selected_faces = salowell_bpy_lib.bevel(
             offset_type = salowell_bpy_lib.bevel_offset_type_items( propDic[ 'bevel_settings' ][ 'offset_type' ] ).name, 
             offset = propDic[ 'bevel_settings' ][ 'offset' ], 
             profile_type = salowell_bpy_lib.bevel_profile_type_items( propDic[ 'bevel_settings' ][ 'profile_type' ] ).name, 
@@ -1403,8 +1419,15 @@ def gen_real_corner_mesh( obj, layerIndexKey ) -> None:
             miter_inner = salowell_bpy_lib.bevel_miter_inner_items( propDic[ 'bevel_settings' ][ 'miter_inner' ] ).name, 
             spread = propDic[ 'bevel_settings' ][ 'spread' ], 
             vmesh_method = salowell_bpy_lib.bevel_vmesh_method_items( propDic[ 'bevel_settings' ][ 'vmesh_method' ] ).name, 
-            release_confirm = False
+            release_confirm = False,
+            edge_selection_type = edge_selection_type
         )
+        
+        if len(selected_faces) > 0:
+            selected_face_objects.append(selected_faces[0])
+            selected_face_indexes.append(selected_faces[1])
+    
+    return selected_face_objects, selected_face_indexes
 
 @bpy.app.handlers.persistent
 def realcorner219HandleSelectDeselect( scene ) -> None:

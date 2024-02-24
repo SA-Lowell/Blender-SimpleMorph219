@@ -413,7 +413,7 @@ def array_map_low_to_high_numbers(array:Array = []) -> Array:
     
     return original_order_mapped, reordered_mapped
 
-def get_edge_indexes_from_vertex_index( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 ) -> int:
+def get_edges_of_vertex( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 ) -> Array:
     """
     Retrieves the indexes of every single edge connected to the input vertex index.
 
@@ -442,17 +442,11 @@ def get_edge_indexes_from_vertex_index( mesh:bpy.types.Mesh, vertex:int, select_
     
     if mesh is not None:
         if select_state == 0:
-            for edge in mesh.edges:
-                if edge.vertices[0] == vertex or edge.vertices[1] == vertex:
-                    edge_indexes.append( edge.index )
+            edge_indexes = [ edge.index for edge in mesh.edges if edge.vertices[0] == vertex or edge.vertices[1] ]
         elif select_state == 1:
-            for edge in mesh.edges:
-                if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and edge.select:
-                    edge_indexes.append( edge.index )
+            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and edge.select ]
         else:
-            for edge in mesh.edges:
-                if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and not edge.select:
-                    edge_indexes.append( edge.index )
+            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and not edge.select ]
     
     return edge_indexes
 

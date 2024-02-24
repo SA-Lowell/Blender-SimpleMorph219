@@ -817,7 +817,19 @@ def startSetDeform( context ):
 def markObjectAsSimpleMorphBaseObject( obj ):
     if len( realcorner219.get_all_real_corner_custom_prop_keys( obj ) ) == 0:
         realcorner219.createNewRealCornerCustomProperty( obj, realcorner219.realCorner219PropName )
+    
     obj[ simpleMorph219BaseName ] = True
+    
+    s_m_219_obj:realcorner219.simple_morph_219_object = None
+    
+    for index in realcorner219.simple_morph_219_object_list:
+        if realcorner219.simple_morph_219_object_list[ index ].object_name == obj.name:
+            s_m_219_obj = realcorner219.simple_morph_219_object_list[ index ]
+            break
+    
+    if s_m_219_obj is None:
+        s_m_219_obj = realcorner219.simple_morph_219_object(obj.name)
+        realcorner219.simple_morph_219_object_list.append(s_m_219_obj)
 
 def isSimpleMorphBaseObject( obj ):
     if type( obj ) is not Object:

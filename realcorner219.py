@@ -48,12 +48,13 @@ class simple_morph_219_layer_map():
     
     beveled_median_vertices_to_last_edge:dict = {}
     beveled_median_vertices_to_original_edge:dict = {}
-
-    def set_bmesh( self, obj:bpy.types.Object ):
-        bpy.ops.object.mode_set( mode = 'OBJECT' )
-        
-        self.blender_mesh = bmesh.new()
-        self.blender_mesh.from_mesh( obj.data )
+    
+    unbeveled_vertices:dict = {}#The unbeveled vertices mapped back to their previous IDs
+    unbeveled_edges:dict = {}#The unbeveled edges mapped back to their previous IDs
+    unbeveled_faces:dict = {}#The unbeveled faces mapped back to their previous IDs
+    
+    def set_bmesh( self, blender_mesh:bmesh.types.BMesh ):
+        self.blender_mesh = blender_mesh.copy()
         
     def set_empty( self ) -> None:
         self.blender_mesh = None
@@ -301,68 +302,77 @@ class simple_morph_219_object():
         
         return vertex_map, edge_map, face_map
 
+    #maps layer_index_key to the previous layer
     def gen_selected_bevels_map(self, layer_index_key ) -> None:
         layer_map:simple_morph_219_layer_map = self.get_layer_map_from_name( layer_index_key )
         layer_map.set_empty()
         
-        real_corner_prop_keys = get_all_real_corner_custom_prop_keys( self.obj )
-        layer_index = get_real_corner_custom_prop_key_index( self.obj, layer_index_key )
-        duplicate_object:object = None
+        real_corner_prop_keys = get_all_real_corner_custom_prop_keys( bpy.data.objects[ self.object_name ] )
         
+        layer_index = get_real_corner_custom_prop_key_index( bpy.data.objects[ self.object_name ], layer_index_key )
+        if layer_index > 0:
+            original_mesh = gen_real_corner_meshes( bpy.data.objects[ self.object_name ], real_corner_prop_keys[layer_index - 1] )[0][-1]
+        else:
+            original_mesh = self.base_blender_mesh.copy()
+#TODO: If layer_indsex == 0? Then we need the unmodified object mesh to work with.
+        #Start at 0. Loop through each layer from zero to
         for index in range( 0, layer_index + 1) :
-            if duplicate_object is not None:
-                bpy.ops.object.delete()
-            
             bpy.ops.object.mode_set( mode = 'OBJECT')
-            
-            salowell_bpy_lib.isolate_object_select( bpy.data.objects[ self.object_name ] )
-            duplicate_object = bpy.context.selected_objects[0]
+
+            gen_real_corner_meshes_result = gen_real_corner_meshes( bpy.data.objects[ self.object_name ], real_corner_prop_keys[index] )
+            duplicate_object:bmesh.types.BMesh = gen_real_corner_meshes_result[0][-1]
+            new_edges_From_mesh_gen:Array = gen_real_corner_meshes_result[4][-1]
+            duplicate_object.verts.ensure_lookup_table()
+            duplicate_object.edges.ensure_lookup_table()
             
             vertex_edges_map:dict = {}
             vertex_edges_map_selected:dict = {}
             vertex_edges_map_unselected:dict = {}
             
-            selected_edges = realCornerPropIndexToDict( duplicate_object, real_corner_prop_keys[ index ] )['edges']
+            selected_edges = realCornerPropIndexToDict( bpy.context.selected_objects[0], real_corner_prop_keys[ index ] )['edges']
             
             for selected_edge in selected_edges:
-                vertex_0:int = duplicate_object.data.edges[selected_edge].vertices[0]
-                vertex_1:int = duplicate_object.data.edges[selected_edge].vertices[1]
+                vertex_0:int = duplicate_object.edges[ selected_edge ].verts[0].index
+                vertex_1:int = duplicate_object.edges[ selected_edge ].verts[1].index
                 
                 if not vertex_0 in vertex_edges_map:
-                    vertex_edges_map[vertex_0] = salowell_bpy_lib.get_edges_of_vertex(duplicate_object.data, vertex_0, 1)
+                    vertex_edges_map[vertex_0] = salowell_bpy_lib.get_edges_of_vertex(duplicate_object, vertex_0, 0)
                     vertex_edges_map_selected[vertex_0]:Array = []
                     vertex_edges_map_unselected[vertex_0]:Array = []
                     
                     for vertex_edge in vertex_edges_map[vertex_0]:
-                        if not vertex_edge in selected_edges:
+                        if not vertex_edge in new_edges_From_mesh_gen:
                             vertex_edges_map_unselected[vertex_0].append(vertex_edge)
                         else:
                             vertex_edges_map_selected[vertex_0].append(vertex_edge)
                 
                 if not vertex_1 in vertex_edges_map:
+                    vertex_edges_map[vertex_1] = salowell_bpy_lib.get_edges_of_vertex(duplicate_object, vertex_1, 0)
                     vertex_edges_map_selected[vertex_1]:Array = []
                     vertex_edges_map_unselected[vertex_1]:Array = []
-                    vertex_edges_map[vertex_1] = salowell_bpy_lib.get_edges_of_vertex(duplicate_object.data, vertex_1, 1)
                     
                     for vertex_edge in vertex_edges_map[vertex_1]:
-                        if not vertex_edge in selected_edges:
+                        if not vertex_edge in new_edges_From_mesh_gen:
                             vertex_edges_map_unselected[vertex_1].append(vertex_edge)
                         else:
                             vertex_edges_map_selected[vertex_1].append(vertex_edge)
             
             bpy.ops.object.mode_set(mode='OBJECT')
             
-            original_mesh:bmesh = bmesh.new()
-            original_mesh.from_mesh(duplicate_object.data)
+            layer_map2 = self.get_layer_map_from_name( real_corner_prop_keys[ index ] )
             
-            selected_faces = gen_real_corner_mesh( duplicate_object, real_corner_prop_keys[ index ] )[1][-1]
+            gen_mesh_result = gen_real_corner_meshes( bpy.data.objects[ self.object_name ], real_corner_prop_keys[ index ] )
             
-            layer_map.set_bmesh(duplicate_object)
+            selected_faces = gen_mesh_result[2]
+            selected_edges_of_gen = gen_mesh_result[4]
+            
+            layer_map.set_bmesh(gen_mesh_result[0][-1])
+            
             previous_Layer_selected_edges = realCornerPropIndexToDict( bpy.data.objects[ self.object_name ], real_corner_prop_keys[ index ] )[ 'edges' ]
             previous_Layer_selected_edges_order = salowell_bpy_lib.array_map_low_to_high_numbers( previous_Layer_selected_edges )[0]
             
             bevel_faces_grouped_grouped:Array = []
-            _, bounding_edges_grouped_indexes, _, bounding_edges_indexes = salowell_bpy_lib.get_bounding_edges_of_selected_face_groups( bpy.context.selected_objects[0] )
+            _, bounding_edges_grouped_indexes, _, bounding_edges_indexes = salowell_bpy_lib.get_bounding_edges_of_face_groups( duplicate_object, selected_faces[0] )
             edge_indexes_processed:Array = []
             processed_faces:Array = []
             bevel_faces_grouped:Array = [[]] * len( previous_Layer_selected_edges )
@@ -377,7 +387,7 @@ class simple_morph_219_object():
                             edge_indexes_processed.append( edge_index )
                             edge_group_order[ edge_group_index ]#This will return the high low order of the current edge_group_index
                             
-                            selected_faces_of_edge:Array = salowell_bpy_lib.get_faces_of_edge( bpy.data.objects[ self.object_name ], edge_index, 1 )[1]
+                            selected_faces_of_edge:Array = salowell_bpy_lib.get_faces_of_edge_bmesh( duplicate_object, edge_index, 1, selected_faces[0])[1]
                             bevel_faces:Array = []#All faces of a bevel segment
                             edges_of_face:Array = []
                             bevel_median_edges:Array = []
@@ -385,17 +395,18 @@ class simple_morph_219_object():
                             bevel_terminating_edges:Array = []
                             
                             if len( selected_faces_of_edge ) == 1:
-                                edges_of_face = salowell_bpy_lib.get_edges_of_face(bpy.data.objects[ self.object_name ], selected_faces_of_edge[0], 1 )[1]
+                                edges_of_face = salowell_bpy_lib.get_edges_of_face_bmesh(layer_map.blender_mesh, selected_faces_of_edge[0], 1, selected_edges_of_gen[0] )[1]
                             
                             primary_edge:int = edge_index
                             
                             #Looping through each of the faces in this bevel. Starting with 1 and will shrink + grow as more are found + queried.
                             while len( selected_faces_of_edge ) > 0:
                                 selected_face_index = selected_faces_of_edge.pop()
+                                
                                 if selected_face_index not in bevel_faces and selected_face_index not in processed_faces:
                                     processed_faces.append(selected_face_index)
                                     face_is_bevel:bool = True
-                                    edges_of_face = salowell_bpy_lib.get_edges_of_face(bpy.data.objects[ self.object_name ], selected_face_index, 1 )[1]
+                                    edges_of_face = salowell_bpy_lib.get_edges_of_face_bmesh(layer_map.blender_mesh, selected_face_index, 1, selected_edges_of_gen[0] )[1]
                                     
                                     #Looping through all edges[edges_of_face] of this face[selected_face_index]
                                     
@@ -413,7 +424,7 @@ class simple_morph_219_object():
                                         #If this edge[edge_of_face] is a bounding edge of a bevel and is also not the [primary_edge] we are testing we need to make note of this and then move on to the next edge.
                                         if edge_of_face in bounding_edges_indexes and edge_of_face != primary_edge:
                                             edge_is_bounding_edge_count += 1
-                                            break
+                                            continue
                                         
                                         #If this edge[edge_of_face] has already been processed and it's not the [primary_edge] we are testing lets move on to the next [edge_of_face].
                                         if edge_of_face in edge_indexes_processed and edge_of_face != primary_edge:
@@ -423,13 +434,14 @@ class simple_morph_219_object():
                                         if not edge_of_face in edge_indexes_processed:
                                             edge_indexes_processed.append(edge_of_face)
                                         
-                                        edge_1:bpy.types.MeshEdge = bpy.data.objects[ self.object_name ].data.edges[ edge_of_face ]
-                                        edge_2:bpy.types.MeshEdge = bpy.data.objects[ self.object_name ].data.edges[ primary_edge ]
+                                        layer_map.blender_mesh.edges.ensure_lookup_table()
+                                        edge_1:bpy.types.MeshEdge = duplicate_object.edges[ edge_of_face ]
+                                        edge_2:bpy.types.MeshEdge = duplicate_object.edges[ primary_edge ]
                                         
                                         #If the edge we are checking is not connected to the original edge we were testing [neither of its vertices match the original] this means edge_of_face/edge_1 is on the opposite side in the case of a 4 sided polygon (beveled edges should always be comprised of 4 sided faces excluding certain edges/sudden stops and corners.)
-                                        if edge_1.vertices[0] != edge_2.vertices[0] and edge_1.vertices[1] != edge_2.vertices[0] and edge_1.vertices[0] != edge_2.vertices[1] and edge_1.vertices[1] != edge_2.vertices[1]:
+                                        if edge_1.verts[0].index != edge_2.verts[0].index and edge_1.verts[1].index != edge_2.verts[0].index and edge_1.verts[0].index != edge_2.verts[1].index and edge_1.verts[1].index != edge_2.verts[1].index:
                                             primary_edge = edge_1.index
-                                            faces_of_primary_edge = salowell_bpy_lib.get_faces_of_edge( bpy.data.objects[ self.object_name ], primary_edge, 1 )[1]
+                                            faces_of_primary_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( layer_map.blender_mesh, primary_edge, 1, selected_faces[0] )[1]
                                             
                                             for face_of_primary_edge in faces_of_primary_edge:
                                                 if not face_of_primary_edge in processed_faces:
@@ -449,9 +461,28 @@ class simple_morph_219_object():
                             layer_map.beveled_median_edges_to_last_edge[previous_edge_id] = bevel_median_edges
                             layer_map.beveled_endstart_edges_to_last_edge[previous_edge_id] = bevel_startend_edges
         
-        self.map_beveled_mesh_to_previous_layer(original_mesh = original_mesh, new_mesh = layer_map.blender_mesh, new_faces = selected_faces, new_layer_map = layer_map)
+        previous_map:tuple = self.map_beveled_mesh_to_previous_layer(original_mesh = original_mesh, new_mesh = duplicate_object, new_faces = selected_faces[0], new_layer_map = layer_map)
+        layer_map.unbeveled_vertices = previous_map[0]
+        layer_map.unbeveled_edges = previous_map[1]
+        layer_map.unbeveled_faces = previous_map[2]
         
         return layer_map
+
+def create_if_not_exists_simple_morph_219_object(object_name) -> simple_morph_219_object:
+    global simple_morph_219_object_list
+    
+    s_m_219_obj:simple_morph_219_object = None
+    
+    for obj in simple_morph_219_object_list:
+        if obj.object_name == object_name:
+            s_m_219_obj = obj
+            break
+    
+    if s_m_219_obj is None:
+        s_m_219_obj = simple_morph_219_object(object_name)
+        simple_morph_219_object_list.append(s_m_219_obj)
+        
+    return s_m_219_obj
 
 class realCorner219States(Enum):
     NONE = 0
@@ -737,10 +768,22 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
             bpy.data.objects[ realCorner219ModifiedObjName ][ simplemorph219.simpleMorph219BaseName ] = False
             bpy.ops.object.mode_set( mode = 'EDIT')
             
-            genRealCornerMeshAtPrevIndex( bpy.data.objects[ realCorner219ModifiedObjName ], context.scene.realCorner219Layers )
+            blender_mesh = genRealCornerMeshAtPrevIndex( bpy.data.objects[ realCorner219ModifiedObjName ], context.scene.realCorner219Layers )[0]
+            
+            if len( blender_mesh ) == 0:
+                blender_mesh = salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects[ realCorner219ModifiedObjName ].data)
+            else:
+                blender_mesh = blender_mesh[-1]
+            
             realCorner219ModifiedObjName = context.selected_objects[0].name
             realcorner219HandleSelectDeselectFunctionLocked = False
             bpy.data.objects[ realCorner219SelectedBaseObjName ].hide_viewport = True
+            
+            bpy.ops.object.mode_set( mode = 'OBJECT')
+            blender_mesh.to_mesh(bpy.data.objects[realCorner219ModifiedObjName].data)
+            bpy.data.objects[realCorner219ModifiedObjName].update_from_editmode()
+            bpy.ops.object.mode_set( mode = 'EDIT')
+            realcorner219HandleSelectDeselectFunctionLocked = False
         elif self.action == 'TURN_OFF_AND_SAVE_EDGE_SELECT':
             realcorner219HandleSelectDeselectFunctionLocked = True
             originalObject = None
@@ -1066,8 +1109,11 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             realCorner219ModifiedObjName = updatedObject.name
             self.placeholderObjectName = context.selected_objects[0].name
             
-            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
-                
+            real_corner_meshes:Array = gen_real_corner_meshes( updatedObject, self.real_corner_layer_name )[0]
+            
+            bpy.ops.object.mode_set( mode = 'OBJECT')
+            real_corner_meshes[-1].to_mesh(context.selected_objects[0].data)
+            context.selected_objects[0].update_from_editmode()
             realcorner219HandleSelectDeselectFunctionLocked = False
         else:
             realcorner219HandleSelectDeselectFunctionLocked = True
@@ -1086,8 +1132,13 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             updatedObject[ simplemorph219.simpleMorph219BaseName ] = False
             salowell_bpy_lib.isolate_object_select( updatedObject )
             
-            gen_real_corner_mesh( updatedObject, self.real_corner_layer_name )
+            real_corner_meshes:Array = gen_real_corner_meshes( updatedObject, self.real_corner_layer_name )[0]
             self.placeholderObjectName = context.selected_objects[0].name
+            
+            bpy.ops.object.mode_set( mode = 'OBJECT')
+            real_corner_meshes[-1].to_mesh(context.selected_objects[0].data)
+            context.selected_objects[0].update_from_editmode() 
+            
             realcorner219HandleSelectDeselectFunctionLocked = False
             update_real_corner_bevel_values_locked = False
         self.action = 'DO_NOTHING'
@@ -1323,56 +1374,53 @@ def applyRealCornerUpdate( scene ) -> None:
         bpy.data.objects[ realCorner219LastUpdate[0] ][ realCorner219LastUpdate[1] ] = realCorner219LastUpdate[2]
         realCorner219LastUpdate = []
 
-def genRealCornerMeshAtPrevIndex( obj, layerIndexKey ) -> None:
+def genRealCornerMeshAtPrevIndex( obj, layerIndexKey ) -> Array | Array | Array:
     propKeyIndex = get_real_corner_custom_prop_key_index( obj, layerIndexKey )
+    generated_meshes:Array = []
+    selected_face_objects:Array = []
+    selected_face_indexes:Array = []
+    selected_edge_objects:Array = []
+    selected_edge_indexes:Array = []
+    selected_vertex_objects:Array = []
+    selected_vertices:Array = []
     
     if propKeyIndex > 0:
         propKeyIndex -= 1
         PropKeysArr = get_all_real_corner_custom_prop_keys( obj )
-        gen_real_corner_mesh( obj, PropKeysArr[ propKeyIndex ] )
+        generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices =  gen_real_corner_meshes( obj, PropKeysArr[ propKeyIndex ] )
 
-def gen_real_corner_mesh( obj, layerIndexKey ) -> Array | Array:
+    return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
+
+
+def gen_real_corner_meshes( obj, layerIndexKey ) -> Array | Array | Array | Array | Array | Array | Array:
+    blender_mesh:bmesh.types.BMesh = salowell_bpy_lib.mesh_to_bmesh(obj.data)
+    
     selected_face_objects:Array = []
     selected_face_indexes:Array = []
+    selected_edge_objects:Array = []
+    selected_edge_indexes:Array = []
+    selected_vertex_objects:Array = []
+    selected_vertices:Array = []
+    generated_meshes:Array = []
     
     realCornerPropKeys = get_all_real_corner_custom_prop_keys( obj )
     layerIndex = get_real_corner_custom_prop_key_index( obj, layerIndexKey )
     
     for propKey in range( 0, layerIndex + 1 ):
-        bpy.ops.object.mode_set( mode = 'EDIT')
-        bpy.ops.mesh.select_mode( type = 'EDGE' )
-        bpy.ops.mesh.select_all( action = 'DESELECT' )
-        
         propDic = realCornerPropIndexToDict( obj, realCornerPropKeys[ propKey ] )
-        bpy.ops.object.mode_set( mode = 'OBJECT' )
         
-        for i in bpy.context.selected_objects[0].data.polygons:
-            i.select = False
+        grouped_faces = salowell_bpy_lib.separate_orphaned_and_faced_edges(blender_mesh, propDic[ 'edges' ])
         
-        for i in bpy.context.selected_objects[0].data.edges:
-            i.select = False
-        
-        for i in bpy.context.selected_objects[0].data.vertices:
-            i.select = False
-        
-        bpy.ops.object.mode_set( mode = 'EDIT' )
-        bpy.ops.object.mode_set( mode = 'OBJECT' )
-        
-        grouped_faces = salowell_bpy_lib.separate_orphaned_and_faced_edges(bpy.context.selected_objects[0], propDic[ 'edges' ])
-        bpy.ops.object.mode_set( mode = 'OBJECT' )
-        
-        edge_count:int = len( bpy.context.selected_objects[0].data.edges )
-        
-        for edgeIndex in propDic[ 'edges' ]:
-            if edgeIndex < edge_count:
-                bpy.context.selected_objects[0].data.edges[ edgeIndex ].select = True
+        edge_count:int = len( blender_mesh.edges )
         
         edge_selection_type = 0
         
         if len(grouped_faces[1]) > 0:
             edge_selection_type = 1
         
-        selected_faces = salowell_bpy_lib.bevel(
+        bevel_result = salowell_bpy_lib.bevel(
+            blender_mesh = blender_mesh,
+            edge_ids_to_bevel = propDic[ 'edges' ],
             offset_type = salowell_bpy_lib.bevel_offset_type_items( propDic[ 'bevel_settings' ][ 'offset_type' ] ).name, 
             offset = propDic[ 'bevel_settings' ][ 'offset' ], 
             profile_type = salowell_bpy_lib.bevel_profile_type_items( propDic[ 'bevel_settings' ][ 'profile_type' ] ).name, 
@@ -1395,11 +1443,18 @@ def gen_real_corner_mesh( obj, layerIndexKey ) -> Array | Array:
             edge_selection_type = edge_selection_type
         )
         
-        if len(selected_faces) > 0:
-            selected_face_objects.append(selected_faces[0])
-            selected_face_indexes.append(selected_faces[1])
+        if len(bevel_result[0]) > 0:
+            selected_face_objects.append(bevel_result[1])
+            selected_face_indexes.append(bevel_result[2])
+            generated_meshes.append(bevel_result[0][-1])
+            selected_edge_objects.append(bevel_result[3])
+            selected_edge_indexes.append(bevel_result[4])
+            selected_vertex_objects.append(bevel_result[5])
+            selected_vertices.append(bevel_result[6])
+            
+    return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
+
     
-    return selected_face_objects, selected_face_indexes
 
 @bpy.app.handlers.persistent
 def realcorner219HandleSelectDeselect( scene ) -> None:

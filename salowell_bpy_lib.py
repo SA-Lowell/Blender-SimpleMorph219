@@ -202,7 +202,7 @@ def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender
 
 #select_state might seem weird but it's important to use when a calling function very specifically needs faces that only exist in a certain select state.
 #TODO: The if statements that select_state uses are weird, but I never got around to changing them before fully testing everything.
-def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0 ) -> Array | Array:
+def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0, selected_faces:Array = [] ) -> Array | Array:
     """
     Retrieves the indexes of every single face the input edge is connected to.
 
@@ -241,7 +241,7 @@ def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0 
         for face in mesh.faces:
             found_first = False
             
-            if not face in owner_faces and face.select:
+            if not face.index in owner_faces_indexes and face.index in selected_faces:
                 for _, value in enumerate( face.verts ):
                     if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
                         if found_first:
@@ -254,7 +254,7 @@ def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0 
         for face in mesh.faces:
             found_first = False
             
-            if not face in owner_faces and not face.select:
+            if not face.index in owner_faces_indexes and not face.index in selected_faces:
                 for _, value in enumerate( face.verts ):
                     if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
                         if found_first:
@@ -267,7 +267,7 @@ def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0 
         for face in mesh.faces:
             found_first = False
             
-            if not face in owner_faces:
+            if not face.index in owner_faces_indexes:
                 for _, value in enumerate( face.verts ):
                     if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
                         if found_first:
@@ -413,13 +413,13 @@ def array_map_low_to_high_numbers(array:Array = []) -> Array:
     
     return original_order_mapped, reordered_mapped
 
-def get_edges_of_vertex( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 ) -> Array:
+def get_edges_of_vertex( mesh:bmesh.types.BMesh, vertex:int, select_state:int = 0, selected_edges:Array = [] ) -> Array:
     """
     Retrieves the indexes of every single edge connected to the input vertex index.
 
     Parameters
     ----------
-    mesh: bpy.types.Mesh, Object.data
+    mesh: bmesh.types.BMesh, Object.data converted to a bmesh
         The Mesh you want to retrieve vertices from
 
     vertex: int
@@ -442,15 +442,15 @@ def get_edges_of_vertex( mesh:bpy.types.Mesh, vertex:int, select_state:int = 0 )
     
     if mesh is not None:
         if select_state == 0:
-            edge_indexes = [ edge.index for edge in mesh.edges if edge.vertices[0] == vertex or edge.vertices[1] ]
+            edge_indexes = [ edge.index for edge in mesh.edges if edge.verts[0].index == vertex or edge.verts[1].index == vertex ]
         elif select_state == 1:
-            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and edge.select ]
+            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.verts[0].index == vertex or edge.verts[1].index == vertex ) and edge.index in selected_edges ]
         else:
-            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.vertices[0] == vertex or edge.vertices[1] == vertex ) and not edge.select ]
+            edge_indexes = [ edge.index for edge in mesh.edges if ( edge.verts[0].index == vertex or edge.verts[1].index == vertex ) and edge.index not in selected_edges ]
     
     return edge_indexes
 
-def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> Array:
+def map_edge_keys_to_edges(mesh:bmesh.types.BMesh , selected_only:bool = False) -> dict:
     """
     Used to map a mesh's edge_keys to its MeshEdge objects
 
@@ -475,7 +475,7 @@ def map_edge_keys_to_edges(mesh:bpy.types.Mesh, selected_only:bool = False) -> A
     
     return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
 
-def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Array | Array | dict:
+def separate_orphaned_and_faced_edges( blender_mesh:bmesh.types.BMesh, edges:Array ) -> Array | Array | dict:
     """
     Takes the selected edges [edges] and separates out edges that form faces and those that do not (those that are orphaned)
     
@@ -497,29 +497,18 @@ def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Ar
     face_edges:Array = [] #List of all edges that form full faces
     orphaned_edges:Array = []
     
-    isolate_object_select( obj )
+    obj_edge_count:int = len( blender_mesh.edges )
     
-    bpy.ops.object.mode_set( mode = 'EDIT')
-    bpy.ops.mesh.select_mode( type = 'VERT' )
-    bpy.ops.mesh.select_all( action = 'DESELECT' )
-    bpy.ops.mesh.select_mode( type = 'EDGE' )
-    bpy.ops.object.mode_set( mode = 'OBJECT')
-    
-    obj_edge_count:int = len( obj.data.edges )
+    blender_mesh.edges.ensure_lookup_table()
     
     for edge_index in edges:
         if edge_index < obj_edge_count:
-            obj.data.edges[ edge_index ].select = True
+            blender_mesh.edges[ edge_index ].select = True
     
-    bpy.ops.object.mode_set( mode = 'EDIT')
-    bpy.ops.mesh.select_mode( type = 'FACE' )
-    bpy.ops.object.mode_set( mode = 'OBJECT')
-    bpy.ops.object.mode_set( mode = 'EDIT')
-    
-    full_faces = get_selected_faces( obj )[1]
+    full_faces = get_selected_faces( blender_mesh )[1]
     
     for face_index in full_faces:
-        edges_of_face = get_edges_of_face( obj, face_index, 1)[1]
+        edges_of_face = get_edges_of_face_bmesh( blender_mesh, face_index)[1]
         grouped_edges_by_face[ face_index ] = edges_of_face
         
         for face_edge_index in edges_of_face:
@@ -532,7 +521,24 @@ def separate_orphaned_and_faced_edges( obj:bpy.types.Object, edges:Array ) -> Ar
     
     return orphaned_edges, face_edges, grouped_edges_by_face, 
 
-def bevel( offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'SUPERELLIPSE', offset_pct:float = 0.0, segments:int = 1, profile:float = 0.5, affect:str = 'EDGES', clamp_overlap:bool = False, loop_slide:bool = True, mark_seam:bool = False, mark_sharp:bool = False, material:int = -1, harden_normals:str = False, face_strength_mode:str = 'NONE', miter_outer:str = 'SHARP', miter_inner:str = 'SHARP', spread:float = 0.1, vmesh_method:str = 'ADJ', release_confirm:bool = False, edge_selection_type:int = 3  ) -> Array | Array:
+def mesh_to_bmesh(mesh:bpy.types.Mesh) -> bpy.types.Mesh:
+    if type( mesh ) is not bpy.types.Mesh:
+        return None
+    
+    blender_mesh:bmesh = bmesh.new()
+    blender_mesh.from_mesh(mesh)
+    
+    return blender_mesh
+
+def delete_bmesh(blender_mesh:bmesh.types.BMesh) -> bool:
+    if type( blender_mesh ) is not bmesh.types.BMesh:
+        return False
+    
+    blender_mesh.free()
+    
+    return True
+
+def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'SUPERELLIPSE', offset_pct:float = 0.0, segments:int = 1, profile:float = 0.5, affect:str = 'EDGES', clamp_overlap:bool = False, loop_slide:bool = True, mark_seam:bool = False, mark_sharp:bool = False, material:int = -1, harden_normals:str = False, face_strength_mode:str = 'NONE', miter_outer:str = 'SHARP', miter_inner:str = 'SHARP', spread:float = 0.1, vmesh_method:str = 'ADJ', release_confirm:bool = False, edge_selection_type:int = 3  ) -> Array | Array | Array | Array | Array | Array | Array:
     """
     Bevels the currently selected object and returns an array of the newly created faces
 
@@ -547,6 +553,8 @@ def bevel( offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'S
     
     Returns
     -------
+        Array:
+            An array of each bmesh created from a bevel operation (0-2 in length)
         An array of the newly created faces (Note: Sometimes their IDs can match previous face IDs from before the bevel was performed.)
     """
     if edge_selection_type < 0:
@@ -554,46 +562,40 @@ def bevel( offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'S
     elif edge_selection_type > 3:
         edge_selection_type = 3
     
+    if offset_type == 'PERCENT':
+        offset = offset_pct
+    
+    beveled_blender_meshes:Array = []
     selected_faces:Array = []
     selected_face_indexes:Array = []
+    selected_edges:Array = []
+    selected_edge_indexes:Array = []
+    selected_vertices:Array = []
+    selected_vertex_indexes:Array = []
     
-    bpy.ops.object.mode_set( mode = 'EDIT')
-    
-    bpy.ops.mesh.select_mode( type = 'EDGE' )
-    
-    obj = bpy.context.active_object
-    
-    mesh = obj.data
-    
-    selected_edges = get_selected_edges( obj )[1]
-    
-    orphaned_edges, faced_edges = separate_orphaned_and_faced_edges( obj, selected_edges) [0:2]
+    orphaned_edges, faced_edges = separate_orphaned_and_faced_edges( blender_mesh, edge_ids_to_bevel) [0:2]
     
     has_orphaned_edges = True if len( orphaned_edges ) > 0 else False
     has_faced_edges = True if len( faced_edges ) > 0 else False
     
     if edge_selection_type == 0 and not has_orphaned_edges:
-        return []
+        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
     elif edge_selection_type == 1 and not has_faced_edges:
-        return []
+        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
     elif (edge_selection_type == 2 or edge_selection_type == 3) and not has_orphaned_edges and not has_faced_edges:
-        return []
+        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
     
     loops:int = 1
     
     if edge_selection_type == 0:
         edge_mode = 0
-        bpy.ops.mesh.select_mode( type = 'EDGE' )
     elif edge_selection_type == 1:
         edge_mode = 1
-        bpy.ops.mesh.select_mode( type = 'FACE' )
     elif edge_selection_type == 2:
         edge_mode = 0
-        bpy.ops.mesh.select_mode( type = 'EDGE' )
         loops = 2
     elif edge_selection_type == 3:
         edge_mode = 1
-        bpy.ops.mesh.select_mode( type = 'FACE' )
         loops = 2
     
     for i in range(loops):
@@ -604,58 +606,73 @@ def bevel( offset_type:str = 'OFFSET', offset:float = 0.0, profile_type:str = 'S
         
         edges_to_select:Array = []
         
-        bpy.ops.object.mode_set( mode = 'EDIT')
-        bpy.ops.mesh.select_mode( type = 'VERT' )
-        bpy.ops.mesh.select_all( action = 'DESELECT' )
-        
         if edge_mode == 1:
-            bpy.ops.mesh.select_mode( type = 'FACE' )
             edges_to_select = faced_edges
         else:
-            bpy.ops.mesh.select_mode( type = 'EDGE' )
             edges_to_select = orphaned_edges
         
-        bpy.ops.object.mode_set( mode = 'OBJECT')
-        
         for edge_id in edges_to_select:
-            bpy.context.selected_objects[0].data.edges[edge_id].select = True
+            blender_mesh.edges[edge_id].select = True
         
-        bpy.ops.object.mode_set( mode = 'EDIT')
+        selected_edge_objects:Array = []
         
-        bpy.ops.mesh.bevel(
-            offset_type = offset_type, 
-            offset = offset, 
-            profile_type = profile_type, 
-            offset_pct = offset_pct, 
-            segments = segments, 
-            profile = profile, 
+        blender_mesh.edges.ensure_lookup_table()
+        
+        for edge_index in edge_ids_to_bevel:
+            selected_edge_objects.append(blender_mesh.edges[edge_index])
+        
+        bevel_result:dict = bmesh.ops.bevel(
+            blender_mesh,
+            geom = selected_edge_objects,
+            offset_type = offset_type,
+            offset = offset,
+            profile_type = profile_type,
+            segments = segments,
+            profile = profile,
             affect = affect,
-            clamp_overlap = clamp_overlap, 
-            loop_slide = loop_slide, 
-            mark_seam = mark_seam, 
-            mark_sharp = mark_sharp, 
-            material = material, 
-            harden_normals = harden_normals, 
-            face_strength_mode = face_strength_mode, 
-            miter_outer = miter_outer, 
-            miter_inner = miter_inner, 
-            spread = spread, 
-            vmesh_method = vmesh_method, 
-            release_confirm = release_confirm
+            clamp_overlap = clamp_overlap,
+            loop_slide = loop_slide,
+            mark_seam = mark_seam,
+            mark_sharp = mark_sharp,
+            material = material,
+            harden_normals = harden_normals,
+            face_strength_mode = face_strength_mode,
+            miter_outer = miter_outer,
+            miter_inner = miter_inner,
+            spread = spread,
+            vmesh_method = vmesh_method
         )
         
-        bpy.ops.object.mode_set( mode = 'OBJECT')
+        faces:Array = [[],[]]
+        edges:Array = [[],[]]
+        vertices:Array = [[], []]
         
-        faces:Array = get_selected_faces( obj )
+        for face in bevel_result['faces']:
+            faces[0].append(face)
+            faces[1].append(face.index)
         
         selected_faces += faces[0]
         selected_face_indexes += faces[1]
+        
+        for edge in bevel_result['edges']:
+            edges[0].append(edge)
+            edges[1].append(edge.index)
+        
+        selected_edges += edges[0]
+        selected_edge_indexes += edges[1]
+        
+        for vertex in bevel_result['verts']:
+            vertices[0].append(vertex)
+            vertices[1].append(vertex.index)
+        
+        selected_vertices += vertices[0]
+        selected_vertex_indexes += vertices[1]
+        
+        beveled_blender_meshes.append(blender_mesh.copy())
+    
+    return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
 
-    bpy.ops.object.mode_set( mode = 'OBJECT')
-    
-    return selected_faces, selected_face_indexes
-    
-def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array | Array | Array | Array:
+def get_bounding_edges_of_face_groups( obj:bmesh.types.BMesh, faces:Array ) -> Array | Array | Array | Array:
     """
     Gets the outer and inner edges of every group of selected faces.
 
@@ -708,9 +725,10 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array 
         [3]
         Same as 2, but contains the indexes of the edges instead of the MeshEdge objects
     """
-    face_groups:Array = get_grouped_selected_faces( obj )
+    face_groups:Array = get_grouped_selected_faces( obj, faces )
+    
     bounding_edges:Array = []
-    edge_key_edges = map_edge_keys_to_edges(obj.data, True)
+    edge_key_edges = map_edge_keys_to_edges(obj, True)
     
     processed_faces:Array = []
     processed_edges:Array = []
@@ -721,12 +739,13 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array 
             if not face in processed_faces:
                 processed_faces.append(face)
                 
-                for edge_key in face.edge_keys:
+                for edge_key in face.edges:
+                    edge_key = (edge_key.verts[0].index, edge_key.verts[1].index)
                     edge = edge_key_edges[edge_key]
                     if not edge in processed_edges:
                         processed_edges.append(edge)
                         
-                        edges_faces = get_faces_of_edge( obj, edge.index, 1 )[0]
+                        edges_faces = get_faces_of_edge_bmesh( obj, edge.index, 1, faces )[0]
                         
                         if len(edges_faces) == 1:
                             bounding_edges[ face_group_index ].append( edge )
@@ -769,7 +788,7 @@ def get_bounding_edges_of_selected_face_groups( obj:bpy.types.Object ) -> Array 
                 bounding_edges_1d_indexes.append( processing_edge.index )
                 
                 for index, edge in enumerate( bounding_edges_group ):
-                    if edge.vertices[0] == processing_edge.vertices[0] or edge.vertices[1] == processing_edge.vertices[1] or edge.vertices[1] == processing_edge.vertices[0] or edge.vertices[0] == processing_edge.vertices[1]:
+                    if edge.verts[0] == processing_edge.verts[0] or edge.verts[1] == processing_edge.verts[1] or edge.verts[1] == processing_edge.verts[0] or edge.verts[0] == processing_edge.verts[1]:
                         if edge not in processed_edges:
                             unprocessed_linked_edges.append( edge )
                         
@@ -785,20 +804,15 @@ def object_exists(object_name:str = '') -> bool:
     return True
 
 #TODO: THIS IS WAY TOO SLOW! For the love of god optimize this.
-def get_grouped_selected_faces( obj ) -> Array:
+def get_grouped_selected_faces( obj, selected_faces:Array ) -> Array:
     selected_face_groups:Array = []
     
-    if type( obj ) is bpy.types.Object:
-        obj_name = obj.name
-        obj = bpy.context.scene.objects[ obj_name ]
-        
-        isolate_object_select( obj )
-        selected_faces:Array = getObjectSelectedFaces( obj )
+    if type( obj ) is bmesh.types.BMesh:
         polygon_group_index:int = 0
         selected_face_groups.append([])
         
-        if len( selected_faces[1] ) > 0:
-            edge_key_edges = map_edge_keys_to_edges(obj.data, True)
+        if len( selected_faces ) > 0:
+            edge_key_edges = map_edge_keys_to_edges(obj, True)
             
             polygons_completed:Array = []
             edge_keys_completed:Array = []
@@ -807,23 +821,26 @@ def get_grouped_selected_faces( obj ) -> Array:
                 if not edge_key_edges[edge_key].index in edge_keys_completed:
                     start_new_group = False
                     edge_keys_completed.append(edge_key_edges[edge_key].index)
-                    polygons:Array = get_faces_of_edge( obj, edge_key_edges[edge_key].index, 1 )[0]
+                    polygons:Array = get_faces_of_edge_bmesh( obj, edge_key_edges[edge_key].index, 0 )[0]
                     
                     while len(polygons) > 0:
                         polygon_index = polygons.pop()
                         
-                        if polygon_index.select and not polygon_index in polygons_completed:
+                        if polygon_index.index in selected_faces and not polygon_index in polygons_completed:
                             polygons_completed.append(polygon_index)
                             
-                            for edge_key2 in polygon_index.edge_keys:
+                            for edge_key2 in polygon_index.edges:
+                                edge_key2 = (edge_key2.verts[0].index, edge_key2.verts[1].index)
+                                
                                 if not edge_key_edges[ edge_key2 ].index in edge_keys_completed:
                                     edge_keys_completed.append(edge_key_edges[ edge_key2 ].index)
-                                    polygons2:Array = get_faces_of_edge( obj, edge_key_edges[ edge_key2 ].index, 1 )[0]
+                                    polygons2:Array = get_faces_of_edge_bmesh( obj, edge_key_edges[ edge_key2 ].index, 0 )[0]
                                     
                                     for polygon_index2 in polygons2:
-                                        if polygon_index2.select and not polygon_index2 in polygons_completed and not polygon_index2 in polygons :
+                                        if polygon_index2.index in selected_faces and not polygon_index2.index in polygons_completed and not polygon_index2 in polygons :
                                             polygons.append(polygon_index2)
-                                    if polygon_index.select and not polygon_index in selected_face_groups[polygon_group_index]:
+                                    
+                                    if polygon_index.index in selected_faces and not polygon_index.index in selected_face_groups[polygon_group_index]:
                                         start_new_group = True
                                         selected_face_groups[polygon_group_index].append(polygon_index)
                     
@@ -832,6 +849,7 @@ def get_grouped_selected_faces( obj ) -> Array:
                         selected_face_groups.append([])
     
     selected_face_groups.pop()
+    
     return selected_face_groups
 
 def getArmatureFromArmatureObject( armatureObject ):
@@ -871,11 +889,12 @@ def ensureBoneSurvival( bone ):
     if bone.head.x == bone.tail.x and bone.head.y == bone.tail.y and bone.head.z == bone.tail.z:
         bone.tail.z += 1.0
 
-def get_selected_faces( obj:object ) -> Array | Array:
+def get_selected_faces( blender_mesh:object ) -> Array | Array:
     selected_faces:Array = []
     selected_face_indexes:Array = []
+    blender_mesh.select_flush(True)
     
-    for face in obj.data.polygons:
+    for face in blender_mesh.faces:
         if face.select:
             selected_faces.append( face )
             selected_face_indexes.append( face.index )
@@ -887,6 +906,7 @@ def select_faces( obj:object, face_indexes:Array ):
     
     for face_index in face_indexes:
         obj.data.polygons[ face_index ].select = True
+
 #vertexIndex = the index of the vertex within obj. This is the safest way to query these values
 def get_faces_connected_to_vertex( vertexIndex, obj ):
     if obj is None or not isType( obj, 'MESH' ) or not hasattr( obj, 'data' ):
@@ -1091,10 +1111,9 @@ def getObjectSelectedFaces( obj ) -> Array:
     selected_faces:Array = []
     
     if type( obj ) is bpy.types.Object:
-        mesh:bpy.types.Mesh = obj.data
-        bm:bmesh = bmesh.new()
-        bm.from_mesh(mesh)
-        selected_faces = getBmeshSelectedFaces( bm )
+        blender_mesh = mesh_to_bmesh(obj.data)
+        
+        selected_faces = getBmeshSelectedFaces( blender_mesh )
     
     return selected_faces
 
@@ -1194,13 +1213,25 @@ def pair_edge_vertices( previous_bmesh:bmesh, previous_edge_id:int, connected_pr
     
     return pair_map
 
-def get_edges_of_face_bmesh( blender_mesh:bmesh, face_index:int ) -> Array | Array:
+def get_edges_of_face_bmesh( blender_mesh:bmesh, face_index:int, select_state:int = 0, selected_edges:Array = [] ) -> Array | Array:
     edges_of_face:Array = []
     edges_of_face_indexes:Array = []
     
-    for edge in blender_mesh.faces[ face_index ].edges:
-        edges_of_face.append( edge )
-        edges_of_face_indexes.append( edge.index )
+    blender_mesh.faces.ensure_lookup_table()
+    if select_state == 0:
+        for edge in blender_mesh.faces[ face_index ].edges:
+            edges_of_face.append( edge )
+            edges_of_face_indexes.append( edge.index )
+    elif select_state == 1:
+        for edge in blender_mesh.faces[ face_index ].edges:
+            if edge.index in selected_edges:
+                edges_of_face.append( edge )
+                edges_of_face_indexes.append( edge.index )
+    else:
+        for edge in blender_mesh.faces[ face_index ].edges:
+            if edge.index not in selected_edges:
+                edges_of_face.append( edge )
+                edges_of_face_indexes.append( edge.index )
     
     return edges_of_face, edges_of_face_indexes
 

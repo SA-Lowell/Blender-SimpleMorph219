@@ -820,16 +820,7 @@ def markObjectAsSimpleMorphBaseObject( obj ):
     
     obj[ simpleMorph219BaseName ] = True
     
-    s_m_219_obj:realcorner219.simple_morph_219_object = None
-    
-    for index in realcorner219.simple_morph_219_object_list:
-        if realcorner219.simple_morph_219_object_list[ index ].object_name == obj.name:
-            s_m_219_obj = realcorner219.simple_morph_219_object_list[ index ]
-            break
-    
-    if s_m_219_obj is None:
-        s_m_219_obj = realcorner219.simple_morph_219_object(obj.name)
-        realcorner219.simple_morph_219_object_list.append(s_m_219_obj)
+    salowell_bpy_lib.create_if_not_exists_simple_morph_219_object(obj.name) 
 
 def isSimpleMorphBaseObject( obj ):
     if type( obj ) is not Object:

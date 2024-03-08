@@ -860,8 +860,22 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         
         if self.action == 'TEST_QUICK':
             print('QUICK_TEST')
-            test_obj = simple_morph_219_object(context.selected_objects[0].name)
-            print(test_obj.gen_selected_bevels_map('realCorner219_0'))
+            s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
+            layer_index:int = get_real_corner_custom_prop_key_index(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
+            custom_prop_keys:Array = get_all_real_corner_custom_prop_keys(bpy.context.selected_objects[0])
+            previous_layer_key:str = custom_prop_keys[layer_index - 1]
+            current_layer_key:str = custom_prop_keys[layer_index]
+            layer_map = s_m_219_object.gen_selected_bevels_map(previous_layer_key)
+            
+            print('-------------------------------------------------------------')
+            print('layer_map.blender_mesh: ' + str(layer_map.blender_mesh))
+            print('layer_map.beveled_faces_to_last_edge: ' + str(layer_map.beveled_faces_to_last_edge))
+            print('layer_map.beveled_median_edges_to_last_edge: ' + str(layer_map.beveled_median_edges_to_last_edge))
+            print('layer_map.beveled_endstart_edges_to_last_edge: ' + str(layer_map.beveled_endstart_edges_to_last_edge))
+            print('layer_map.unbeveled_vertices: ' + str(layer_map.unbeveled_vertices))
+            print('layer_map.unbeveled_edges: ' + str(layer_map.unbeveled_edges))
+            print('layer_map.unbeveled_faces: ' + str(layer_map.unbeveled_faces))
+            
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':
             pass
@@ -1450,11 +1464,6 @@ def realCornerPropIndexToDict( obj:object, propKey:str ) -> dict:
 
 def realCornerPropStringToDict( realCornerPropString:str ) -> str:
     realCornerPropDict = createEmptyRealCornerPropDict()
-    #realCornerPropDict:dict = {}
-    #realCornerPropDict[ 'edges' ] = []
-    #realCornerPropDict[ 'bevel_settings' ] = {}
-    #realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
-    #realCornerPropDict[ 'bevel_settings' ][ 'offset' ]:float = 0.001
     
     propertyValues = realCornerPropString.strip().lstrip( '0' ).lstrip( '(' ).rstrip( ')' ).split( ')(' )
     
@@ -1656,11 +1665,13 @@ def realcorner219HandleSelectDeselect( scene ) -> None:
                     objectToReselect.append( obj.name )
             
             currentMode = bpy.context.object.mode
-            bpy.ops.object.mode_set( mode = 'OBJECT')
-            bpy.ops.object.select_all( action = 'DESELECT' )
+            if numOfSelObjs > 0:
+                bpy.ops.object.mode_set( mode = 'OBJECT')
+                bpy.ops.object.select_all( action = 'DESELECT' )
             
             for obj in scene.objects:
                 if obj.name == realCorner219ModifiedObjName:
+                    bpy.ops.object.mode_set( mode = 'OBJECT')
                     bpy.data.objects[ realCorner219ModifiedObjName ].select_set( True )
                     bpy.ops.object.delete()
                     break
@@ -1693,6 +1704,8 @@ def realcorner219HandleSelectDeselect( scene ) -> None:
 @bpy.app.handlers.persistent
 def realcorner219HandleSelectDeselect_2( scene ) -> None:
     if len( bpy.context.selected_objects ) == 0:
+        return None
+    elif not type( scene ) is bpy.types.Scene:
         return None
     
     obj = bpy.context.selected_objects[0]

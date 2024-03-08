@@ -470,10 +470,12 @@ def map_edge_keys_to_edges(mesh:bmesh.types.BMesh , selected_only:bool = False) 
             MeshPolygon.edge_keys[n] => MeshEdge,
         ]
     """
-    if selected_only:
-        return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys) if mesh.edges[i].select}
+    mapped_edges:dict = {}
     
-    return {ek: mesh.edges[i] for i, ek in enumerate(mesh.edge_keys)}
+    for edge in mesh.edges:
+        mapped_edges[(edge.verts[0].index, edge.verts[1].index)] = edge
+    
+    return mapped_edges
 
 def separate_orphaned_and_faced_edges( blender_mesh:bmesh.types.BMesh, edges:Array ) -> Array | Array | dict:
     """

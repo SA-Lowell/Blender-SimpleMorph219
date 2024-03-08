@@ -4,7 +4,7 @@ from enum import Enum
 
 import bpy
 
-from bpy.types import Operator, Panel
+from bpy.types import Menu, Operator, Panel
 from bpy.props import ( BoolProperty, EnumProperty, FloatProperty, IntProperty, StringProperty )
 from bpy.utils import register_class, unregister_class
 
@@ -13,9 +13,125 @@ import mathutils
 
 from . import salowell_bpy_lib, simplemorph219
 
+class realcorner219_procedural_edge_select_types( Enum ):
+    EDGE = 0
+    LEFT_EDGE = 1
+    EDGE_RIGHT = 2
+    LEFT_EDGE_RIGHT = 3
+    LEFT_RIGHT = 4
+    LEFT = 5
+    RIGHT = 6
+    BEVEL_EDGE = 7
+    BEVEL_LEFT_EDGE = 8
+    BEVEL_EDGE_RIGHT = 9
+    BEVEL_LEFT_EDGE_RIGHT = 10
+    BEVEL_LEFT_RIGHT = 11
+    BEVEL_LEFT = 12
+    BEVEL_RIGHT = 13
+
+class realcorner219_procedural_beveled_edge_select_types( Enum ):
+    TOP = 0
+    TOP_MIDDLE = 1
+    MIDDLE = 2
+    MIDDLE_BOTTOM = 3
+    BOTTOM = 4
+    PERCENT = 5
+
 simple_morph_219_object_list:Array = []
 
 realCorner219PropName = 'realCorner219_'
+
+class edge_select_pie_menu(Menu):
+    bl_idname = 'edge_select_pie_menu'
+    bl_label = 'Edge Options'
+    
+    def execute( self, context ):
+        return {'FINISHED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        pie = layout.menu_pie()
+        
+        edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'EDGE', icon = 'EVENT_A')
+        edge.action = 'EDGE'
+        
+        edge_right = pie.operator('view3d.handle_dynamic_edge_select', text = 'Edge + Right', icon = 'EVENT_B')
+        edge_right.action = 'EDGE_RIGHT'
+        
+        left_edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Left + Edge', icon = 'EVENT_C')
+        left_edge.action = 'LEFT_EDGE'
+        
+        left_edge_right = pie.operator('view3d.handle_dynamic_edge_select', text = 'Left + Edge + Right', icon = 'EVENT_D')
+        left_edge_right.action = 'LEFT_EDGE_RIGHT'
+        
+        unused = pie.operator('view3d.handle_dynamic_edge_select', text = 'Deselect', icon = 'EVENT_E')
+        unused.action = 'EDGE'
+        
+        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_F')
+        unused.action = 'EDGE'
+        
+        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_G')
+        unused.action = 'EDGE'
+        
+        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_H')
+        unused.action = 'EDGE'
+
+class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
+    bl_idname = 'view3d.handle_dynamic_edge_select'
+    bl_label = 'Select Dynamic Edge'
+    bl_description = 'Selecting dynamically generated edges.'
+    
+    action: EnumProperty(
+        items = [
+            ( "EDGE", "EDGE", "Select only the center part of the line" ),
+            ( "EDGE_RIGHT", "Add Layer", "Adds a new bevel layer to the mesh" ),
+            ( "LEFT_EDGE", "Mark As 219 Base", "Marks the current object as a base object for all Simple Morph operations." ),
+            ( "LEFT_EDGE_RIGHT", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" )
+        ]
+    )
+    
+    def execute( self, context ):
+        global realCorner219LastUpdate, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName
+        edge_id:int = -1
+        
+        for edge in bpy.context.selected_objects[0].data.edges:
+            if edge.select:
+                edge_id = edge.index
+                break
+        
+        s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
+        
+        layer_index:int = get_real_corner_custom_prop_key_index(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
+        custom_prop_keys:Array = get_all_real_corner_custom_prop_keys(bpy.context.selected_objects[0])
+        previous_layer_key:str = custom_prop_keys[layer_index - 1]
+        
+        s_m_219_object.gen_selected_bevels_map(previous_layer_key)
+        
+        selected_edges = salowell_bpy_lib.get_selected_edges(bpy.context.selected_objects[0])[1]
+        
+        layer_map = s_m_219_object.get_layer_map_from_name( previous_layer_key )
+        
+        if self.action == 'LEFT_EDGE_RIGHT':
+            for edge in selected_edges:
+                is_unbeveled:bool = False
+                for previous_edge, current_edge in enumerate( layer_map.unbeveled_edges ):
+                    if current_edge == edge:
+                        is_unbeveled = True
+                        break
+                
+                if is_unbeveled:
+                    print('UNBEVELED: ' + str(edge))
+                else:
+                    print('BEVELED: ' + str(edge))
+            
+            print('PIE MENU SELECT')
+        print(realcorner219_procedural_edge_select_types[ self.action ].value)
+        print(selected_edges)
+        
+        layer_properties:dict = realCornerPropIndexToDict(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
+        layer_properties['edges'] = []
+        
+        return {'FINISHED'}
 
 class simple_morph_219_layer_map():
     """
@@ -495,6 +611,7 @@ realCorner219SelectedBaseObjName:str = ''
 realCorner219ModifiedObjName:str = ''
 realcorner219HandleSelectDeselectFunctionLocked:bool = False
 update_real_corner_bevel_values_locked:bool = False
+real_corner_219_handle_edge_select_mode_click_locked:bool = False
 
 def update_real_corner_bevel_values( op, context ):
     global update_real_corner_bevel_values_locked, realCorner219CurrentState, realCorner219States, realCorner219LastUpdate
@@ -801,7 +918,13 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
             
             if originalObject is not None and modifiedObject is not None:
                 realCornerPropDict = realCornerPropIndexToDict( originalObject, context.scene.realCorner219Layers )
-                realCornerPropDict[ 'edges' ] = selectedEdgesToCustomPropArray( modifiedObject )
+                
+                if context.scene.realCorner219Layers == realCorner219PropName + '0':
+                    realCornerPropDict[ 'edges' ] = selectedEdgesToCustomPropArray( modifiedObject )
+                    realCornerPropDict[ 'edge_references' ] = []
+                else:
+                    realCornerPropDict[ 'edges' ] = []
+                
                 originalObject[ context.scene.realCorner219Layers ] = realCornerPropDictToString( realCornerPropDict )
             
             if modifiedObject is not None:
@@ -1272,6 +1395,7 @@ def selectedEdgesToCustomPropArray( obj ):
 def createEmptyRealCornerPropDict() -> dict:
     realCornerPropDict:dict = {}
     realCornerPropDict[ 'edges' ] = []
+    realCornerPropDict[ 'edge_references' ] = []
     realCornerPropDict[ 'bevel_settings' ] = {}
     realCornerPropDict[ 'bevel_settings' ][ 'affect' ]:int = 1
     realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ]:int = 0
@@ -1316,6 +1440,8 @@ def realCornerPropDictToString( realCornerPropDict:dict ) -> str:
     
     realCornerPropString:str = '0(' + ','.join( str( edgeId ) for edgeId in realCornerPropDict[ 'edges' ] ) + ')'
     realCornerPropString = realCornerPropString + '(' + affect + ',' + offset_type + ',' + offset + ',' + offset_pct + ',' + segments + ',' + profile + ',' + material + ',' + harden_normals + ',' + clamp_overlap + ',' + loop_slide + ',' + mark_seam + ',' + mark_sharp + ',' + miter_outer + ',' + miter_inner + ',' + spread + ',' + vmesh_method + ',' + face_strength_mode + ',' + profile_type + ')'
+    
+    realCornerPropString = realCornerPropString + '(' + ','.join( str( edge_reference[0] ) + ':' + str( edge_reference[1] ) + ':' + str( edge_reference[2] ) for edge_reference in realCornerPropDict[ 'edge_references' ] ) + ')'
     
     return realCornerPropString
 
@@ -1362,6 +1488,17 @@ def realCornerPropStringToDict( realCornerPropString:str ) -> str:
             realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] = realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ] if split_length < 16 else int( split[15] )
             realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] = realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] if split_length < 17 else int( split[16] )
             realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] = realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] if split_length < 18 else int( split[17] )
+        elif index == 2 and value != '':
+            for edgeIndex, edgeValue in enumerate( split ):
+                if edgeValue != '':
+                    edgeValue = edgeValue.split(':')
+                    
+                    for i, v in enumerate( edgeValue ):
+                        edgeValue[ i ] = int( v )
+                    
+                    split[ edgeIndex ] = edgeValue
+            
+            realCornerPropDict[ 'edge_references' ] = split
     
     return realCornerPropDict
 
@@ -1454,7 +1591,42 @@ def gen_real_corner_meshes( obj, layerIndexKey ) -> Array | Array | Array | Arra
             
     return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
 
+@bpy.app.handlers.persistent
+def real_corner_219_handle_edge_select_mode_click( scene, depsgraph ):
+    global real_corner_219_handle_edge_select_mode_click_locked, realCorner219PropName
     
+    if not real_corner_219_handle_edge_select_mode_click_locked and type( scene ) is bpy.types.Scene and scene.realCorner219Layers != realCorner219PropName + '0':
+        real_corner_219_handle_edge_select_mode_click_locked = True
+        
+        if realCorner219CurrentState == realCorner219States.SELECTING_EDGE and len(bpy.context.selected_objects) > 0 and bpy.context.object is not None and bpy.context.object.mode == 'EDIT':
+            edges_to_deselect:Array = []
+            
+            for edge in bpy.context.selected_objects[0].data.edges:
+                if edge.select:
+                    edges_to_deselect.append(edge.index)
+            
+            bpy.context.active_object.update_from_editmode()
+            
+            blender_mesh:bmesh = bmesh.new()
+            blender_mesh.from_mesh( bpy.context.active_object.data )
+            blender_mesh.edges.ensure_lookup_table()
+            
+            for edge_index in edges_to_deselect:
+                blender_mesh.edges[edge_index].select = False
+            
+            bpy.ops.object.mode_set( mode = 'OBJECT')
+            blender_mesh.to_mesh(bpy.context.active_object.data)
+            blender_mesh.free()
+            bpy.ops.object.mode_set( mode = 'EDIT')
+            
+            for edge in bpy.context.active_object.data.edges:
+                if edge.select:
+                    bpy.ops.wm.call_menu_pie(name = 'edge_select_pie_menu')
+                    break
+            
+            bpy.context.active_object.update_from_editmode()
+        
+        real_corner_219_handle_edge_select_mode_click_locked = False
 
 @bpy.app.handlers.persistent
 def realcorner219HandleSelectDeselect( scene ) -> None:
@@ -1537,22 +1709,28 @@ def register() -> None:
     register_class( SIMPLE_MORPH_219_REAL_CORNER_PT_panel )
     register_class( SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS )
     register_class( SIMPLE_MORPH_219_REAL_CORNER_QuickOps )
+    register_class( edge_select_pie_menu )
+    register_class( OT_real_corner_219_handle_dynamic_edge_select )
     
     bpy.app.handlers.depsgraph_update_post.append( realcorner219HandleSelectDeselect )
     bpy.app.handlers.depsgraph_update_post.append( realcorner219HandleSelectDeselect_2 )
+    bpy.app.handlers.depsgraph_update_post.append( real_corner_219_handle_edge_select_mode_click )
     bpy.app.handlers.undo_post.append( applyRealCornerUpdate )
     
     bpy.app.handlers.load_post.append( realcorner219HandleSelectDeselect )
     bpy.app.handlers.load_post.append( realcorner219HandleSelectDeselect_2 )
+    bpy.app.handlers.load_post.append( real_corner_219_handle_edge_select_mode_click )
     bpy.app.handlers.load_post.append( applyRealCornerUpdate )
 
 def unregister() -> None:
     unregister_class( SIMPLE_MORPH_219_REAL_CORNER_PT_panel )
     unregister_class( SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS )
     unregister_class( SIMPLE_MORPH_219_REAL_CORNER_QuickOps )
+    unregister_class( edge_select_pie_menu )
+    unregister_class( OT_real_corner_219_handle_dynamic_edge_select )
     
     for h in bpy.app.handlers.depsgraph_update_post:
-        if h.__name__ == 'realcorner219HandleSelectDeselect' or h.__name__ == 'realcorner219HandleSelectDeselect_2':
+        if h.__name__ == 'realcorner219HandleSelectDeselect' or h.__name__ == 'realcorner219HandleSelectDeselect_2' or h.__name__ == 'real_corner_219_handle_edge_select_mode_click':
             bpy.app.handlers.depsgraph_update_post.remove( h )
     
     for h in bpy.app.handlers.undo_post:

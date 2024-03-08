@@ -90,7 +90,7 @@ def unwrapObjectUV( objectToUnwrap ):
     for loop in objectToUnwrap.data.loops:
         objectToUnwrap.data.uv_layers.active.data[loop.index].uv = (objectToUnwrap.data.uv_layers.active.data[loop.index].uv[0] + uvNewCenter[0], objectToUnwrap.data.uv_layers.active.data[loop.index].uv[1] + uvNewCenter[1])
 
-#Unselects all objects and then selects just the passed in Object
+#Unselects all objects except the passed in Object. Selects the passed in object if it's not already selected.
 #Also returns the objects that were selected before this change is made along with the select mode.
 def isolate_object_select( objectToIsolate ):
     selectedObjects = bpy.context.selected_objects
@@ -104,7 +104,15 @@ def isolate_object_select( objectToIsolate ):
     if bpy.context.object.mode != 'OBJECT':
         bpy.ops.object.mode_set( mode = 'OBJECT' )
     
-    bpy.ops.object.select_all( action = 'DESELECT' )
+    selected_object_names:Array = []
+    
+    for selected_object in bpy.context.selected_objects:
+        selected_object_names.append(selected_object.name)
+    
+    for select_object_name in selected_object_names:
+        if select_object_name != objectToIsolate.name:
+            bpy.context.scene.objects[ select_object_name ].select_set( False )
+    
     objectToIsolate.select_set( True )
     
     return selectedObjects, selectedMode

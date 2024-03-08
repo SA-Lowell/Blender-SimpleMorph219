@@ -567,11 +567,6 @@ def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:
             An array of each bmesh created from a bevel operation (0-2 in length)
         An array of the newly created faces (Note: Sometimes their IDs can match previous face IDs from before the bevel was performed.)
     """
-    if edge_selection_type < 0:
-        edge_selection_type = 0
-    elif edge_selection_type > 3:
-        edge_selection_type = 3
-    
     if offset_type == 'PERCENT':
         offset = offset_pct
     
@@ -583,102 +578,61 @@ def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:
     selected_vertices:Array = []
     selected_vertex_indexes:Array = []
     
-    orphaned_edges, faced_edges = separate_orphaned_and_faced_edges( blender_mesh, edge_ids_to_bevel) [0:2]
+    selected_edge_objects:Array = []
     
-    has_orphaned_edges = True if len( orphaned_edges ) > 0 else False
-    has_faced_edges = True if len( faced_edges ) > 0 else False
+    blender_mesh.edges.ensure_lookup_table()
     
-    if edge_selection_type == 0 and not has_orphaned_edges:
-        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
-    elif edge_selection_type == 1 and not has_faced_edges:
-        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
-    elif (edge_selection_type == 2 or edge_selection_type == 3) and not has_orphaned_edges and not has_faced_edges:
-        return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
+    for edge_index in edge_ids_to_bevel:
+        selected_edge_objects.append(blender_mesh.edges[edge_index])
+
+    bevel_result:dict = bmesh.ops.bevel(
+        blender_mesh,
+        geom = selected_edge_objects,
+        offset_type = offset_type,
+        offset = offset,
+        profile_type = profile_type,
+        segments = segments,
+        profile = profile,
+        affect = affect,
+        clamp_overlap = clamp_overlap,
+        loop_slide = loop_slide,
+        mark_seam = mark_seam,
+        mark_sharp = mark_sharp,
+        material = material,
+        harden_normals = harden_normals,
+        face_strength_mode = face_strength_mode,
+        miter_outer = miter_outer,
+        miter_inner = miter_inner,
+        spread = spread,
+        vmesh_method = vmesh_method
+    )
     
-    loops:int = 1
+    faces:Array = [[],[]]
+    edges:Array = [[],[]]
+    vertices:Array = [[], []]
     
-    if edge_selection_type == 0:
-        edge_mode = 0
-    elif edge_selection_type == 1:
-        edge_mode = 1
-    elif edge_selection_type == 2:
-        edge_mode = 0
-        loops = 2
-    elif edge_selection_type == 3:
-        edge_mode = 1
-        loops = 2
+    for face in bevel_result['faces']:
+        faces[0].append(face)
+        faces[1].append(face.index)
     
-    for i in range(loops):
-        if i == 1 and edge_selection_type == 3:
-            edge_mode = 0
-        elif i == 1 and edge_selection_type == 2:
-            edge_mode = 1
-        
-        edges_to_select:Array = []
-        
-        if edge_mode == 1:
-            edges_to_select = faced_edges
-        else:
-            edges_to_select = orphaned_edges
-        
-        for edge_id in edges_to_select:
-            blender_mesh.edges[edge_id].select = True
-        
-        selected_edge_objects:Array = []
-        
-        blender_mesh.edges.ensure_lookup_table()
-        
-        for edge_index in edge_ids_to_bevel:
-            selected_edge_objects.append(blender_mesh.edges[edge_index])
-        
-        bevel_result:dict = bmesh.ops.bevel(
-            blender_mesh,
-            geom = selected_edge_objects,
-            offset_type = offset_type,
-            offset = offset,
-            profile_type = profile_type,
-            segments = segments,
-            profile = profile,
-            affect = affect,
-            clamp_overlap = clamp_overlap,
-            loop_slide = loop_slide,
-            mark_seam = mark_seam,
-            mark_sharp = mark_sharp,
-            material = material,
-            harden_normals = harden_normals,
-            face_strength_mode = face_strength_mode,
-            miter_outer = miter_outer,
-            miter_inner = miter_inner,
-            spread = spread,
-            vmesh_method = vmesh_method
-        )
-        
-        faces:Array = [[],[]]
-        edges:Array = [[],[]]
-        vertices:Array = [[], []]
-        
-        for face in bevel_result['faces']:
-            faces[0].append(face)
-            faces[1].append(face.index)
-        
-        selected_faces += faces[0]
-        selected_face_indexes += faces[1]
-        
-        for edge in bevel_result['edges']:
-            edges[0].append(edge)
-            edges[1].append(edge.index)
-        
-        selected_edges += edges[0]
-        selected_edge_indexes += edges[1]
-        
-        for vertex in bevel_result['verts']:
-            vertices[0].append(vertex)
-            vertices[1].append(vertex.index)
-        
-        selected_vertices += vertices[0]
-        selected_vertex_indexes += vertices[1]
-        
-        beveled_blender_meshes.append(blender_mesh.copy())
+    selected_faces += faces[0]
+    selected_face_indexes += faces[1]
+    
+    for edge in bevel_result['edges']:
+        edges[0].append(edge)
+        edges[1].append(edge.index)
+    
+    selected_edges += edges[0]
+    selected_edge_indexes += edges[1]
+    
+    for vertex in bevel_result['verts']:
+        vertices[0].append(vertex)
+        vertices[1].append(vertex.index)
+    
+    selected_vertices += vertices[0]
+    selected_vertex_indexes += vertices[1]
+    
+    beveled_blender_meshes.append(blender_mesh.copy())
     
     return beveled_blender_meshes, selected_faces, selected_face_indexes, selected_edges, selected_edge_indexes, selected_vertices, selected_vertex_indexes
 

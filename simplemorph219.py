@@ -820,7 +820,7 @@ def markObjectAsSimpleMorphBaseObject( obj ):
     
     obj[ simpleMorph219BaseName ] = True
     
-    salowell_bpy_lib.create_if_not_exists_simple_morph_219_object(obj.name) 
+    realcorner219.create_if_not_exists_simple_morph_219_object(obj.name) 
 
 def isSimpleMorphBaseObject( obj ):
     if type( obj ) is not Object:

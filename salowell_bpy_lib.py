@@ -3,6 +3,8 @@ from enum import Enum
 
 import random
 
+from . import realcorner219
+
 import bpy
 import bmesh
 import mathutils
@@ -530,6 +532,169 @@ def separate_orphaned_and_faced_edges( blender_mesh:bmesh.types.BMesh, edges:Arr
             orphaned_edges.append(edge_index)
     
     return orphaned_edges, face_edges, grouped_edges_by_face, 
+
+#TODO: This is very simplistic and only works for simple bevels
+def beveled_faces_to_last_edge( new_bevel_face_ids:Array, previous_unbeveled_edge_ids:Array ) -> dict:
+    new_bevel_face_ids_copy = new_bevel_face_ids.copy()
+    beveled_faces_to_last_edge_vals:dict = {}
+    
+    faces_per_edge:int = int( len( new_bevel_face_ids_copy ) / len( previous_unbeveled_edge_ids ) )
+    
+    for edge_index in previous_unbeveled_edge_ids:
+        beveled_faces_to_last_edge_vals[ edge_index ] = []
+        
+        index:int = 0
+        
+        while index < faces_per_edge:
+            beveled_faces_to_last_edge_vals[ edge_index ].append( new_bevel_face_ids_copy[ index ] )
+            index += 1
+        
+        del new_bevel_face_ids_copy[ 0 : faces_per_edge ]
+    
+    return beveled_faces_to_last_edge_vals
+
+#returns the edges that are calculated to be parallel to the original pre-beveled edges. But you have to make sure first_beveled_face_id is the first face in a given bevel group. 
+#This function assumes the face is 4 sides.
+def get_parallel_and_perpendicular_edges_of_first_beveled_face( blender_mesh:bmesh.types.BMesh, first_beveled_face_id ) -> Array:
+    edges_of_face:Array = get_edges_of_face_bmesh( blender_mesh, first_beveled_face_id )[1] 
+    parallel_faces:Array = []
+    perpendicular_faces:Array = []
+    
+    smallest_edge_id:int = edges_of_face[0]
+    smallest_edge_index:int = 0
+    
+    for edge_of_face_index, edge_of_face_id in enumerate( edges_of_face ):
+        if edge_of_face_id < smallest_edge_id:
+            smallest_edge_id = edge_of_face_id
+            smallest_edge_index = edge_of_face_index
+    
+    perpendicular_faces.append( edges_of_face[ smallest_edge_index ] )
+    parallel_faces.append( edges_of_face[ smallest_edge_index - 1 ] )
+    perpendicular_faces.append( edges_of_face[ smallest_edge_index - 2 ] )
+    parallel_faces.append( edges_of_face[ smallest_edge_index - 3 ] )
+    
+    return parallel_faces, perpendicular_faces
+
+#returns the start, end, left, and right edges relative to a given "start" edge
+#The input face MUST be a quad, no other objects are valid. Works great for bevels.
+def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.BMesh, quad_face_id, start_edge_id ) -> Array:
+    edges_of_face:Array = get_edges_of_face_bmesh( blender_mesh, quad_face_id )[1]
+    start_edge_index = edges_of_face.index( start_edge_id )
+    
+    end_edge_id:int = edges_of_face[ start_edge_index - 2 ]
+    left_edge_id:int = edges_of_face[ start_edge_index - 3 ]
+    right_edge_id:int = edges_of_face[ start_edge_index - 1 ]
+    
+    end_edge_index:int = edges_of_face.index( end_edge_id )
+    left_edge_index:int = edges_of_face.index( left_edge_id )
+    right_edge_index:int = edges_of_face.index( right_edge_id )
+    
+    return start_edge_id, end_edge_id, left_edge_id, right_edge_id, start_edge_index, end_edge_index, left_edge_index, right_edge_index
+
+def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blender_mesh:bmesh.types.BMesh, new_bevel_face_ids:Array, previous_unbeveled_edge_ids:Array ) -> dict:
+    layer_map:realcorner219.simple_morph_219_layer_map = realcorner219.simple_morph_219_layer_map()
+    layer_map.blender_mesh = new_blender_mesh.copy()
+    layer_map.previous_blender_mesh = previous_blender_mesh.copy()
+    layer_map.new_face_ids = new_bevel_face_ids.copy()
+    
+    last_parallel_edge:int = -1
+    processed_faces:Array = []
+    processed_edges:Array = []
+    processed_parallel_edges:Array = []
+    queued_faces:Array = []
+    next_column_queue:Array = []
+    _, bounding_edges_grouped_index, _, bounding_edges_1d_indexes = get_bounding_edges_of_face_groups( new_blender_mesh, new_bevel_face_ids )
+    
+    layer_map_beveled_faces_to_last_edge_tmp:dict = beveled_faces_to_last_edge( new_bevel_face_ids, previous_unbeveled_edge_ids )
+    
+    start_edge:int = 0
+    end_edge:int = 0
+    left_edge:int = 0
+    right_edge:int = 0
+    columns_first_right_edge_id:int = -1
+    columns_first_right_edge_index:int = -1
+    
+    for bounding_edge_index in bounding_edges_1d_indexes:
+        processed_parallel_edges.append( last_parallel_edge )
+        faces_of_bounding_edge = get_faces_of_edge_bmesh( new_blender_mesh, bounding_edge_index, 1, new_bevel_face_ids )[1]
+        
+        #Looping through the "Selected" faces that are part of this bounding edge (I don't think it'll ever be more than 1 face, but lets write some safe code just in case)
+        for face_of_bounding_edge in faces_of_bounding_edge:
+            if face_of_bounding_edge not in queued_faces and face_of_bounding_edge not in processed_faces:
+                queued_faces.append( face_of_bounding_edge )
+        
+        if len( queued_faces ) > 0:
+            parallel_edges, prependicular_edges = get_parallel_and_perpendicular_edges_of_first_beveled_face( new_blender_mesh, queued_faces[-1] )
+            
+            for parallel_edge in parallel_edges:
+                if parallel_edge in bounding_edges_1d_indexes:
+                    last_parallel_edge = parallel_edge
+                    break
+        
+        while len( queued_faces ) > 0:
+            processing_face:int = queued_faces.pop()
+            original_edge_index:int = 0
+            original_edge_index_found:bool = False
+            
+            for original_edge_index, new_face_indexes in layer_map_beveled_faces_to_last_edge_tmp.items():
+                for new_face_index in new_face_indexes:
+                    if new_face_index == processing_face:
+                        original_edge_index_found = True
+                        break
+                
+                if original_edge_index_found:
+                    break
+            
+            if original_edge_index not in layer_map.beveled_faces_to_last_edge:
+                layer_map.beveled_faces_to_last_edge[ original_edge_index ] = []
+                layer_map.beveled_median_edges_to_last_edge[ original_edge_index ] = [ [], [] ]
+                layer_map.beveled_endstart_edges_to_last_edge[ original_edge_index ] = [ 0, 0 ]
+            
+            layer_map.beveled_faces_to_last_edge[ original_edge_index ].append( processing_face )
+             
+            processed_faces.append( processing_face )
+            edges_of_face = get_edges_of_face_bmesh( new_blender_mesh, processing_face )[1]
+
+            start_edge_id, end_edge_id, left_edge_id, right_edge_id, start_edge_index, end_edge_index, left_edge_index, right_edge_index = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, processing_face, last_parallel_edge )
+            
+            layer_map.beveled_median_edges_to_last_edge[ original_edge_index ][0].append( left_edge_id )
+            layer_map.beveled_median_edges_to_last_edge[ original_edge_index ][1].append( right_edge_id )
+            
+            if columns_first_right_edge_id == -1:
+                layer_map.beveled_endstart_edges_to_last_edge[ original_edge_index ][0] = last_parallel_edge
+                columns_first_right_edge_id = right_edge_id
+                columns_first_right_edge_index = right_edge_index
+            
+            faces_of_end_edge_ids = get_faces_of_edge_bmesh( new_blender_mesh, end_edge_id, 1, new_bevel_face_ids )[1]
+            faces_of_right_edge_ids = get_faces_of_edge_bmesh( new_blender_mesh, right_edge_id, 1, new_bevel_face_ids )[1]
+            
+            for face_of_end_edge_id in faces_of_end_edge_ids:
+                if face_of_end_edge_id not in queued_faces and face_of_end_edge_id not in processed_faces:
+                    queued_faces.append( face_of_end_edge_id )
+            
+            for face_of_right_edge_id in faces_of_right_edge_ids:
+                if face_of_right_edge_id not in queued_faces and face_of_right_edge_id not in processed_faces:
+                    next_column_queue.append( face_of_right_edge_id )
+        
+            last_parallel_edge = end_edge_id
+        
+        layer_map.beveled_endstart_edges_to_last_edge[ original_edge_index ][1] = last_parallel_edge
+        
+        queued_faces = next_column_queue
+        next_column_queue = []
+        
+        if len(queued_faces) > 0:
+            queued_faces.reverse()
+            edges_of_face = get_edges_of_face_bmesh( new_blender_mesh, queued_faces[-1] )[1]
+            left_edge_index = edges_of_face.index( columns_first_right_edge_id )
+            left_edge_id = edges_of_face[ left_edge_index ]
+            start_edge_id = edges_of_face[ left_edge_index - 1]
+            last_parallel_edge = start_edge_id
+        
+        columns_first_right_edge_id = -1
+        columns_first_right_edge_index = -1
+    
+    return layer_map
 
 def mesh_to_bmesh(mesh:bpy.types.Mesh) -> bpy.types.Mesh:
     if type( mesh ) is not bpy.types.Mesh:

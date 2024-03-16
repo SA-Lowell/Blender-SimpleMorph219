@@ -600,7 +600,6 @@ def order_edges_by_pathing(blender_mesh:bmesh.types.BMesh, edge_ids:Array) -> Ar
     
     return sorted_order
 
-####################################################################TESTED AND DONE
 def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blender_mesh:bmesh.types.BMesh, new_bevel_face_ids_in:Array, previous_unbeveled_edge_ids_in:Array ) -> dict:
     bounding_edge_ids = get_bounding_edges_of_face_groups(new_blender_mesh, new_bevel_face_ids_in)[3]
     layer_map:realcorner219.simple_morph_219_layer_map = realcorner219.simple_morph_219_layer_map()
@@ -642,6 +641,18 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
     
     redirect_faces:Array = []
     
+    previous_unbeveled_edge_normals:Array = [mathutils.Vector( (0.0, 0.0, 0.0) )] * len( previous_unbeveled_edge_ids )
+    
+    index:int = 0
+    for previous_unbeveled_edge_id in previous_unbeveled_edge_ids:
+        vert_0:mathutils.Vector = mathutils.Vector( (previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[0].co[0], previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[0].co[1],previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[0].co[2]) )
+        vert_1:mathutils.Vector = mathutils.Vector( (previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[1].co[0], previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[1].co[1],previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[1].co[2]) )
+        
+        previous_unbeveled_edge_normals[index] = vert_0 - vert_1
+        previous_unbeveled_edge_normals[index].normalize()
+        
+        index += 1
+    
     for bevel_face in new_bevel_face_ids:
         if len(queued_faces) > 0:
             column_depth = 0
@@ -681,10 +692,38 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
             elif seed:
                 seed = False
                 
-                bounding_edges = get_edges_of_face_bmesh( new_blender_mesh, processing_face, 1, bounding_edge_ids )[1]
-                bounding_edges.sort()
+                starting_edge_id:int = 0
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, processing_face, bounding_edges[0] )[0:4]
+                bounding_edges = get_edges_of_face_bmesh( new_blender_mesh, processing_face, 1, bounding_edge_ids )[1]
+                bounding_edges_count:int = len( bounding_edges )
+                
+                if bounding_edges_count == 1:
+                    starting_edge_id = bounding_edges[0]
+                else:
+                    bounding_edge_loop_index:int = 0
+                    smallest_angle:float = 0.0
+                    
+                    for bounding_edge in bounding_edges:
+                        bounding_edge_vert0:mathutils.Vector = mathutils.Vector( (new_blender_mesh.edges[bounding_edge].verts[0].co[0], new_blender_mesh.edges[bounding_edge].verts[0].co[1],new_blender_mesh.edges[bounding_edge].verts[0].co[2]) )
+                        bounding_edge_vert1:mathutils.Vector = mathutils.Vector( (new_blender_mesh.edges[bounding_edge].verts[1].co[0], new_blender_mesh.edges[bounding_edge].verts[1].co[1],new_blender_mesh.edges[bounding_edge].verts[1].co[2]) )
+                        bounding_edge_normal:mathutils.Vector = bounding_edge_vert0 - bounding_edge_vert1
+                        previous_edge_normal:mathutils.Vector = previous_unbeveled_edge_normals[previous_edge_index]
+                        
+                        if bounding_edge_loop_index == 0:
+                            starting_edge_id = bounding_edge
+                            smallest_angle = bounding_edge_normal.angle(previous_edge_normal)
+                            bounding_edge_loop_index += 1
+                            continue
+                        
+                        new_angle:float = bounding_edge_normal.angle(previous_edge_normal)
+                        if new_angle < smallest_angle:
+                            smallest_angle = new_angle
+                            starting_edge_id = bounding_edge
+                            break
+                        
+                        bounding_edge_loop_index += 1
+                
+                start_edge_id, end_edge_id, left_edge_id, right_edge_id = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, processing_face, starting_edge_id )[0:4]
                 
                 first_face_in_column = processing_face
             else:
@@ -1026,9 +1065,6 @@ def object_exists(object_name:str = '') -> bool:
 def get_grouped_bevel_faces( obj, selected_faces:Array ) -> Array:
     obj.faces.ensure_lookup_table()
     obj.edges.ensure_lookup_table()
-    
-    #obj.to_mesh(bpy.data.objects['TESTTTT'].data)
-    #bpy.data.objects['TESTTTT'].data.update()
     
     face_groups:Array = []
     face_queue:Array = []

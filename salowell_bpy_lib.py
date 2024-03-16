@@ -1075,12 +1075,11 @@ def get_grouped_bevel_faces( obj, selected_faces:Array ) -> Array:
     end_edge_id:int = 0
     left_edge_id:int = 0
     right_edge_id:int = 0
-    group_index:int = -1
+    group_index:int = 0
     column_index:int = 0
     
     for index in selected_faces:
         if not index in face_queue and index not in processed_faces:
-            group_index += 1
             face_queue.append(index)
 
         if len(face_queue) > 0:

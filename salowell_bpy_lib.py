@@ -653,7 +653,10 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
         
         index += 1
     
-    for bevel_face in new_bevel_face_ids:
+    new_bevel_face_ids_ordered = new_bevel_face_ids.copy()
+    
+    while len(new_bevel_face_ids_ordered) > 0 :
+        bevel_face = new_bevel_face_ids_ordered[0]
         if len(queued_faces) > 0:
             column_depth = 0
             previous_edge_index += 1
@@ -661,6 +664,7 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
             queued_faces = queued_faces + [redirect_faces[0]]
             del redirect_faces[0]
         elif bevel_face not in processed_faces:
+            del new_bevel_face_ids_ordered[0]
             seed = True
             column_depth = 0
             previous_edge_index += 1
@@ -670,7 +674,8 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
             bounding_edges.sort()
             
             start_edge_id, end_edge_id, left_edge_id, right_edge_id = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, bevel_face, bounding_edges[0] )[0:4]
-        
+        elif bevel_face in processed_faces:
+            del new_bevel_face_ids_ordered[0]
         if len(redirect_faces) > 0 and redirect_faces[0] in processed_faces:
             del redirect_faces[0]
         

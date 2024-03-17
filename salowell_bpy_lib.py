@@ -191,6 +191,7 @@ def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender
     for mesh_1_face_center_index, mesh_1_face_center in enumerate( mesh_1_face_centers ):
         last_distance:int = -1
         current_distance:int = -1
+        shortest_distance:float = 0.0
         mesh_2_face_shortest_distance_index:int = -1
         
         for mesh_2_face_center_index, mesh_2_face_center in enumerate( mesh_2_face_centers ):
@@ -198,8 +199,10 @@ def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender
             
             if last_distance == -1:
                 mesh_2_face_shortest_distance_index = mesh_2_face_center_index
+                shortest_distance = current_distance
             else:
-                if current_distance < last_distance:
+                if current_distance < shortest_distance:
+                    shortest_distance = current_distance
                     mesh_2_face_shortest_distance_index = mesh_2_face_center_index
             
             last_distance = current_distance
@@ -207,6 +210,7 @@ def pair_closest_faces( blender_mesh_1:bmesh, mesh_1_face_indexes:Array, blender
         paired_closest.append( [ mesh_1_face_indexes[ mesh_1_face_center_index ], mesh_2_face_indexes[ mesh_2_face_shortest_distance_index ] ] )
         
         del mesh_2_face_centers[ mesh_2_face_shortest_distance_index ]
+        del mesh_2_face_indexes[ mesh_2_face_shortest_distance_index ]
     
     return paired_closest
 

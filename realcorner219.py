@@ -223,6 +223,58 @@ class simple_morph_219_layer_map():
         
         return False
 
+def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, new_face_id:int, original_anchor_edge_id:int, new_anchor_edge_id:int, layer_map:simple_morph_219_layer_map, new_edges_to_ignore:Array ) -> Array:
+    original_face_edge_ids_tmp:Array = [ edge.index for edge in original_mesh.faces[ original_face_id ].edges ]
+    new_face_edge_ids_tmp:Array = [ edge.index for edge in new_mesh.faces[ new_face_id ].edges ]
+    original_face_edge_ids:Array = []
+    new_face_edge_ids:Array = []
+    
+    for edge_id in new_face_edge_ids_tmp:
+        ignore:bool = False
+        for median_edge_group_id in layer_map.beveled_median_edges_to_last_edge:
+            if edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][0] or edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][1]:
+                ignore = True
+                break
+        
+        if not ignore:
+            new_face_edge_ids.append(edge_id)
+    
+    mapped_edges:Array = []
+    mapped_edges_tmp:Array = []
+
+    new_face_edge_ids_tmp = new_face_edge_ids.copy()
+    new_face_edge_ids = []
+    
+    for original_face_edge_id in original_face_edge_ids_tmp:
+        closest_new_edge:int = get_closest_edge(original_mesh, new_mesh, original_face_edge_id, new_face_edge_ids_tmp)
+        mapped_edges_tmp.append([original_face_edge_id, closest_new_edge])
+    
+    for mapped_edge in mapped_edges_tmp:
+        if mapped_edge[1] not in new_edges_to_ignore:
+            mapped_edges.append(mapped_edge)
+    
+    return mapped_edges
+
+#Finds the closest edge to mesh_1_edge_id from a list of edges, mesh_2_edge_list
+def get_closest_edge(blender_mesh1:bmesh.types.BMesh, blender_mesh2:bmesh.types.BMesh, mesh_1_edge_id:int, mesh_2_edge_ids:Array) -> int:
+    mesh_1_edge_center = ( blender_mesh1.edges[mesh_1_edge_id].verts[0].co + blender_mesh1.edges[mesh_1_edge_id].verts[1].co ) / 2
+    
+    shortest_distance:float = 0.0
+    closest_edge:int = 0
+
+    for mesh_2_edge_index, mesh_2_edge_id in enumerate(mesh_2_edge_ids):
+        mesh_2_edge_center = ( blender_mesh2.edges[mesh_2_edge_id].verts[0].co + blender_mesh2.edges[mesh_2_edge_id].verts[1].co ) / 2
+        distance:float = ( mesh_1_edge_center - mesh_2_edge_center ).length
+        if mesh_2_edge_index == 0:
+            closest_edge = mesh_2_edge_id
+            shortest_distance = distance
+        else:
+            if distance < shortest_distance:
+                shortest_distance = distance
+                closest_edge = mesh_2_edge_id
+    
+    return closest_edge
+
 def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new_faces:Array, new_layer_map:simple_morph_219_layer_map ) -> dict | dict | dict:
     """
     Maps all edges, vertices, and faces of new_mesh back to original_mesh. All vertices, edges, and faces that are part of the bevel operation are not included.
@@ -267,16 +319,6 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
     edge_map:dict = {}
     face_map:dict = {}
     
-    start_edges:Array = [0, 0]
-    end_edges:Array = [0, 0]
-    left_edges:Array = [0, 0]
-    right_edges:Array = [0, 0]
-    
-    start_edge_id:int = 0
-    end_edge_id:int = 0
-    left_edge_id:int = 0
-    right_edge_id:int = 0
-    
     bounding_edges:Array = salowell_bpy_lib.get_bounding_edges_of_face_groups( new_mesh, new_faces )[3]
     
     seed:bool = True
@@ -300,26 +342,10 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if seed:
                 seed = False
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( original_mesh, paired_index[1], previous_mesh_edge )[0:4]
-                start_edges[0] = start_edge_id
-                end_edges[0] = end_edge_id
-                left_edges[0] = left_edge_id
-                right_edges[0] = right_edge_id
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], previous_mesh_edge, face_to_endstart_edge[paired_index[0]], new_layer_map, bounding_edges )
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( new_mesh, paired_index[0], face_to_endstart_edge[paired_index[0]] )[0:4]
-                start_edges[1] = start_edge_id
-                end_edges[1] = end_edge_id
-                left_edges[1] = left_edge_id
-                right_edges[1] = right_edge_id
-                
-                if start_edges[1] not in bounding_edges:
-                    edge_map[start_edges[0]] = start_edges[1]
-                if end_edges[1] not in bounding_edges:
-                    edge_map[end_edges[0]] = end_edges[1]
-                if left_edges[1] not in bounding_edges:
-                    edge_map[left_edges[0]] = left_edges[1]
-                if right_edges[1] not in bounding_edges:
-                    edge_map[right_edges[0]] = right_edges[1]
+                for mapped in mapped_face_edges:
+                    edge_map[mapped[0]] = mapped[1]
     
     face_map_base:dict = face_map.copy()
     
@@ -380,50 +406,19 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for edge in new_mesh.faces[new_face].edges:
                     new_edge_array.append(edge.index)
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( original_mesh, original_face, original_edge.index )[0:4]
-                start_edges[0] = start_edge_id
-                end_edges[0] = end_edge_id
-                left_edges[0] = left_edge_id
-                right_edges[0] = right_edge_id
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, original_edge.index, new_edge.index, new_layer_map, bounding_edges )
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( new_mesh, new_face, new_edge.index )[0:4]
-                start_edges[1] = start_edge_id
-                end_edges[1] = end_edge_id
-                left_edges[1] = left_edge_id
-                right_edges[1] = right_edge_id
-                
-                if start_edges[1] not in bounding_edges:
-                    edge_map[start_edges[0]] = start_edges[1]
-                if end_edges[1] not in bounding_edges:
-                    edge_map[end_edges[0]] = end_edges[1]
-                if left_edges[1] not in bounding_edges:
-                    edge_map[left_edges[0]] = left_edges[1]
-                if right_edges[1] not in bounding_edges:
-                    edge_map[right_edges[0]] = right_edges[1]
+                for mapped in mapped_face_edges:
+                    edge_map[mapped[0]] = mapped[1]
             else:
-                shared_original_edge:int = 0
-                shared_new_edge:int = 0
+                new_mesh_edge_ids =  [new_mesh_edge.index for new_mesh_edge in new_mesh.faces[new_face].edges]
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( original_mesh, original_face, original_mesh.faces[original_face].edges[0].index )[0:4]
-                start_edges[0] = start_edge_id
-                end_edges[0] = end_edge_id
-                left_edges[0] = left_edge_id
-                right_edges[0] = right_edge_id
+                closest_edge_id = get_closest_edge(original_mesh, new_mesh, original_mesh.faces[original_face].edges[0].index, new_mesh_edge_ids)
                 
-                start_edge_id, end_edge_id, left_edge_id, right_edge_id = salowell_bpy_lib.get_left_right_start_end_edges_from_start_edge_id( new_mesh, new_face, new_mesh.faces[new_face].edges[0].index )[0:4]
-                start_edges[1] = start_edge_id
-                end_edges[1] = end_edge_id
-                left_edges[1] = left_edge_id
-                right_edges[1] = right_edge_id
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, original_mesh.faces[original_face].edges[0].index, closest_edge_id, new_layer_map, bounding_edges )
                 
-                if start_edges[1] not in bounding_edges:
-                    edge_map[start_edges[0]] = start_edges[1]
-                if end_edges[1] not in bounding_edges:
-                    edge_map[end_edges[0]] = end_edges[1]
-                if left_edges[1] not in bounding_edges:
-                    edge_map[left_edges[0]] = left_edges[1]
-                if right_edges[1] not in bounding_edges:
-                    edge_map[right_edges[0]] = right_edges[1]
+                for mapped in mapped_face_edges:
+                    edge_map[mapped[0]] = mapped[1]
             
             if original_face not in face_map:
                 face_map[original_face] = new_face
@@ -432,21 +427,18 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             
             previous_face_queue_tmp:Array = []
             filter_out_faces:Array = previous_face_queue + processed_original_faces
-            surrounding_faces = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, start_edges[0], 0)[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, end_edges[0], 0, filter_out_faces )[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, left_edges[0], 0, filter_out_faces )[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, right_edges[0], 0, filter_out_faces )[1]
+            for face_edge in original_mesh.faces[original_face].edges:
+                surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, face_edge.index, 0, filter_out_faces )[1]
             
             for surrounding_face in surrounding_faces:
                 if surrounding_face not in previous_face_queue_tmp:
                     previous_face_queue_tmp.append(surrounding_face)
             
             new_face_queue_tmp:Array = []
-            filter_out_faces = previous_face_queue + processed_new_faces
-            surrounding_faces = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, start_edges[1], 0)[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, end_edges[1], 0, filter_out_faces )[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, left_edges[1], 0, filter_out_faces )[1]
-            surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, right_edges[1], 0, filter_out_faces )[1]
+            filter_out_faces = new_face_queue + processed_new_faces
+            surrounding_faces = []
+            for face_edge in new_mesh.faces[new_face].edges:
+                surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, face_edge.index, 0, filter_out_faces )[1]
             
             for surrounding_face in surrounding_faces:
                 if surrounding_face not in new_face_queue_tmp:
@@ -612,8 +604,7 @@ def edge_to_edge_reference(edge_id, simple_morph_219_obj:simple_morph_219_object
                     
                     if layer_map.beveled_endstart_edges_to_last_edge[previous_edge][0] == edge:
                         selection_value[0] = 1
-                    
-                    if layer_map.beveled_endstart_edges_to_last_edge[previous_edge][1] == edge:
+                    elif layer_map.beveled_endstart_edges_to_last_edge[previous_edge][1] == edge:
                         selection_value[0] = 2
                     
                     break
@@ -930,7 +921,33 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked
         
         if self.action == 'TEST_QUICK':
-            print(salowell_bpy_lib.get_selected_faces( salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects['Cube.066'].data )))
+            generated_meshes1, selected_face_objects1, selected_face_indexes1, selected_edge_objects1, selected_edge_indexes1, selected_vertex_objects1, selected_vertices1 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_0' )
+            generated_meshes2, selected_face_objects2, selected_face_indexes2, selected_edge_objects2, selected_edge_indexes2, selected_vertex_objects2, selected_vertices2 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_1' )
+            generated_meshes3, selected_face_objects3, selected_face_indexes3, selected_edge_objects3, selected_edge_indexes3, selected_vertex_objects3, selected_vertices3 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_2' )
+            generated_meshes4, selected_face_objects4, selected_face_indexes4, selected_edge_objects4, selected_edge_indexes4, selected_vertex_objects4, selected_vertices4 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_3' )
+            return { 'FINISHED' }
+            base_blender_mesh = salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects['Cube'].data)
+            
+            generated_meshes1[0].to_mesh(bpy.data.objects['Cube.000'].data)
+            bpy.data.objects['Cube.000'].data.update()
+            
+            generated_meshes2[0].to_mesh(bpy.data.objects['Cube.001'].data)
+            bpy.data.objects['Cube.001'].data.update()
+            
+            generated_meshes3[0].to_mesh(bpy.data.objects['Cube.001'].data)
+            bpy.data.objects['Cube.002'].data.update()
+            
+            generated_meshes4[0].to_mesh(bpy.data.objects['Cube.001'].data)
+            bpy.data.objects['Cube.003'].data.update()
+            
+            propDic1 = realCornerPropIndexToDict( bpy.data.objects['Cube'], 'realCorner219_0' )
+            propDic2 = realCornerPropIndexToDict( bpy.data.objects['Cube'], 'realCorner219_1' )
+            propDic3 = realCornerPropIndexToDict( bpy.data.objects['Cube'], 'realCorner219_2' )
+            
+            layer_map1 = salowell_bpy_lib.generate_bevel_layer_map( generated_meshes1[0], base_blender_mesh, selected_face_indexes1[0], propDic1['edges'] )
+            layer_map2 = salowell_bpy_lib.generate_bevel_layer_map( generated_meshes2[0], generated_meshes1[0], selected_face_indexes2[0], propDic2['edges'] )
+            layer_map3 = salowell_bpy_lib.generate_bevel_layer_map( generated_meshes3[0], generated_meshes2[0], selected_face_indexes3[0], propDic3['edges'] )
+            return { 'FINISHED' }
             salowell_bpy_lib.generate_bevel_layer_map( salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects['Cube.068'].data), salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects['Cube.065'].data), [20, 19, 18, 17, 25, 26, 27, 28, 33, 34, 35, 36, 9, 10, 11, 12, 5, 6, 7, 8, 29, 30, 31, 32, 13, 14, 15, 16, 24, 23, 22, 21], [0, 2, 4, 5, 7, 8, 10, 11] )
             
             test_arry:Array = [4, 5, 0, 2]
@@ -1705,9 +1722,6 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
         )
         
         if len(bevel_result[0]) > 0:
-            bevel_result[0][-1].to_mesh(bpy.data.objects['TESTTTT'].data)
-            bpy.data.objects['TESTTTT'].data.update()
-            
             selected_face_objects.append(bevel_result[1])
             selected_face_indexes.append(bevel_result[2])
             generated_meshes.append(bevel_result[0][-1])

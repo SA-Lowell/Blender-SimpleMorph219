@@ -1087,10 +1087,13 @@ def get_grouped_bevel_faces( obj, selected_faces:Array ) -> Array:
     group_index:int = 0
     column_index:int = 0
     
+    obj.to_mesh(bpy.data.objects['TESTTTT'].data)
+    bpy.data.objects['TESTTTT'].data.update()
+    
     for index in selected_faces:
         if not index in face_queue and index not in processed_faces:
             face_queue.append(index)
-
+        
         if len(face_queue) > 0:
             first_face_of_column = face_queue[0]
             start_edge_id = obj.faces[ first_face_of_column ].edges[0].index

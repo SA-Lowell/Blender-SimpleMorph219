@@ -135,6 +135,7 @@ class simple_morph_219_layer_map():
     """
     blender_mesh:bmesh.types.BMesh = None#The bmesh for this layer
     previous_blender_mesh:bmesh.types.BMesh = None
+    previous_selected_edges:Array = []#Array of the edges that were selected to perform the bevel which created this new blender_mesh
     new_face_ids:Array = []
     
     beveled_faces_to_original_edge:dict = {}#The newely beveled faces mapped to the original layer edge.
@@ -342,10 +343,11 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if seed:
                 seed = False
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], previous_mesh_edge, face_to_endstart_edge[paired_index[0]], new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], 0, 0, new_layer_map, bounding_edges )
                 
                 for mapped in mapped_face_edges:
-                    edge_map[mapped[0]] = mapped[1]
+                    if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
+                        edge_map[mapped[0]] = mapped[1]
     
     face_map_base:dict = face_map.copy()
     
@@ -406,51 +408,41 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for edge in new_mesh.faces[new_face].edges:
                     new_edge_array.append(edge.index)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, original_edge.index, new_edge.index, new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
                 
                 for mapped in mapped_face_edges:
-                    edge_map[mapped[0]] = mapped[1]
+                    if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
+                        edge_map[mapped[0]] = mapped[1]
             else:
                 new_mesh_edge_ids =  [new_mesh_edge.index for new_mesh_edge in new_mesh.faces[new_face].edges]
                 
                 closest_edge_id = get_closest_edge(original_mesh, new_mesh, original_mesh.faces[original_face].edges[0].index, new_mesh_edge_ids)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, original_mesh.faces[original_face].edges[0].index, closest_edge_id, new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
                 
                 for mapped in mapped_face_edges:
-                    edge_map[mapped[0]] = mapped[1]
+                    if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
+                        edge_map[mapped[0]] = mapped[1]
             
             if original_face not in face_map:
                 face_map[original_face] = new_face
             
             surrounding_faces:Array = []
             
-            previous_face_queue_tmp:Array = []
-            filter_out_faces:Array = previous_face_queue + processed_original_faces
-            for face_edge in original_mesh.faces[original_face].edges:
-                surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, face_edge.index, 0, filter_out_faces )[1]
+            mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
             
-            for surrounding_face in surrounding_faces:
-                if surrounding_face not in previous_face_queue_tmp:
-                    previous_face_queue_tmp.append(surrounding_face)
-            
-            new_face_queue_tmp:Array = []
-            filter_out_faces = new_face_queue + processed_new_faces
-            surrounding_faces = []
-            for face_edge in new_mesh.faces[new_face].edges:
-                surrounding_faces = surrounding_faces + salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, face_edge.index, 0, filter_out_faces )[1]
-            
-            for surrounding_face in surrounding_faces:
-                if surrounding_face not in new_face_queue_tmp:
-                    new_face_queue_tmp.append(surrounding_face)
-            
-            paired = salowell_bpy_lib.pair_closest_faces( original_mesh, previous_face_queue_tmp, new_mesh, new_face_queue_tmp )
-            
-            for tmp_queue_index in range(0, len(paired)):
-                if paired[tmp_queue_index][1] not in new_faces and paired[tmp_queue_index][1] not in new_face_queue and paired[tmp_queue_index][1] not in processed_new_faces:
-                    if paired[tmp_queue_index][0] not in previous_face_queue and paired[tmp_queue_index][0] not in processed_original_faces and paired[tmp_queue_index][0] not in previous_face_queue:
-                        previous_face_queue.append(paired[tmp_queue_index][0])
-                        new_face_queue.append(paired[tmp_queue_index][1])
+            for mapped_face_edge in mapped_face_edges:
+                
+                if mapped_face_edge[1] not in bounding_edges and mapped_face_edge[0] not in new_layer_map.previous_selected_edges:
+                    original_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, mapped_face_edge[0] )[1]
+                    new_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, mapped_face_edge[1] )[1]
+
+                    paired_faces = salowell_bpy_lib.pair_closest_faces( original_mesh, original_faces_of_edge, new_mesh, new_faces_of_edge )
+                    
+                    for paired_face in paired_faces:
+                        if paired_face[0] not in processed_original_faces and paired_face[1] not in processed_new_faces and paired_face[0] not in previous_face_queue and paired_face[1] not in new_face_queue and paired_face[1] not in new_faces:
+                            new_face_queue.append(paired_face[1])
+                            previous_face_queue.append(paired_face[0])
             
             last_original_face = original_face
             last_new_face = new_face

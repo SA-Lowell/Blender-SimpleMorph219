@@ -609,6 +609,7 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
     layer_map:realcorner219.simple_morph_219_layer_map = realcorner219.simple_morph_219_layer_map()
     layer_map.set_empty()
     layer_map.blender_mesh = new_blender_mesh.copy()
+    layer_map.previous_selected_edges = previous_unbeveled_edge_ids_in.copy()
     layer_map.previous_blender_mesh = previous_blender_mesh.copy()
 
     new_bevel_face_ids = new_bevel_face_ids_in.copy()

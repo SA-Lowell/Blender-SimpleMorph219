@@ -661,12 +661,25 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
         smallest_angle:float = 0.0
         
         first_bounding_edge:bool = True
+        
+        face_edge_index:int = 0
+        
         for edge in new_blender_mesh.faces[faces_of_column[0]].edges:
             if edge.index in bounding_edge_ids:
                 vert0:mathutils.Vector = mathutils.Vector( (edge.verts[0].co[0], edge.verts[0].co[1], edge.verts[0].co[2]) )
                 vert1:mathutils.Vector = mathutils.Vector( (edge.verts[1].co[0], edge.verts[1].co[1], edge.verts[1].co[2]) )
                 normal:mathutils.Vector = vert0 - vert1
                 normal.normalize()
+                
+                #Adjusting for corners that have collapsed/overlapping edges and, thus, causing zero length vectors for some edges.
+                #This fix assumes the previous edge of the face isn't also zero. It take the cross product of the current face's normal and previous edge on that face to create a perpendicular normal vector that should be fairly close to what the current edge *SHOULD* be if it hadn't collapsed during the bevel.
+                if normal.length == 0:
+                    previous_edge:bmesh.types.BMEdge = new_blender_mesh.faces[faces_of_column[0]].edges[face_edge_index - 1]
+                    face_normal:mathutils.Vector = new_blender_mesh.faces[faces_of_column[0]].normal
+                    vert0 = mathutils.Vector( (previous_edge.verts[0].co[0], previous_edge.verts[0].co[1], previous_edge.verts[0].co[2]) )
+                    vert1 = mathutils.Vector( (previous_edge.verts[1].co[0], previous_edge.verts[1].co[1], previous_edge.verts[1].co[2]) )
+                    normal = face_normal.cross(vert0 - vert1)
+                    normal.normalize()
                 
                 new_angle:float = normal.angle(previous_unbeveled_edge_normals[previous_unbeveled_edge_id])
                 
@@ -678,6 +691,8 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
                     if new_angle < smallest_angle:
                         smallest_angle = new_angle
                         parallel_starting_edge = edge.index
+            
+            face_edge_index += 1
         
         start_edge_id, end_edge_id, left_edge_id, right_edge_id = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, faces_of_column[0], parallel_starting_edge )[0:4]
         left_faces:Array = get_faces_of_edge_bmesh( new_blender_mesh, left_edge_id, 1, new_bevel_face_ids_ordered )[1]

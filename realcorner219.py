@@ -246,9 +246,31 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     new_face_edge_ids_tmp = new_face_edge_ids.copy()
     new_face_edge_ids = []
     
+    seed:bool = True
+    closest_distance:float = 0.0
+    closest_new_edge:int = 0
+    closest_original_edge:int = 0
+    
     for original_face_edge_id in original_face_edge_ids_tmp:
-        closest_new_edge:int = get_closest_edge(original_mesh, new_mesh, original_face_edge_id, new_face_edge_ids_tmp)
-        mapped_edges_tmp.append([original_face_edge_id, closest_new_edge])
+        new_edge, distance = get_closest_edge(original_mesh, new_mesh, original_face_edge_id, new_face_edge_ids_tmp)
+        
+        if seed:
+            closest_distance = distance
+            closest_new_edge = new_edge
+            closest_original_edge = original_face_edge_id
+            seed = False
+        elif distance < closest_distance:
+            closest_distance = distance
+            closest_new_edge = new_edge
+            closest_original_edge = original_face_edge_id
+    
+    new_edge_index:int = new_face_edge_ids_tmp.index(closest_new_edge)
+    original_edge_index:int = original_face_edge_ids_tmp.index(closest_original_edge)
+    
+    for original_face_edge_id in original_face_edge_ids_tmp:
+        mapped_edges_tmp.append([original_face_edge_ids_tmp[original_edge_index], new_face_edge_ids_tmp[new_edge_index]])
+        new_edge_index -= 1
+        original_edge_index -= 1
     
     for mapped_edge in mapped_edges_tmp:
         if mapped_edge[1] not in new_edges_to_ignore:
@@ -257,7 +279,7 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     return mapped_edges
 
 #Finds the closest edge to mesh_1_edge_id from a list of edges, mesh_2_edge_list
-def get_closest_edge(blender_mesh1:bmesh.types.BMesh, blender_mesh2:bmesh.types.BMesh, mesh_1_edge_id:int, mesh_2_edge_ids:Array) -> int:
+def get_closest_edge(blender_mesh1:bmesh.types.BMesh, blender_mesh2:bmesh.types.BMesh, mesh_1_edge_id:int, mesh_2_edge_ids:Array) -> int | float:
     mesh_1_edge_center = ( blender_mesh1.edges[mesh_1_edge_id].verts[0].co + blender_mesh1.edges[mesh_1_edge_id].verts[1].co ) / 2
     
     shortest_distance:float = 0.0
@@ -274,7 +296,7 @@ def get_closest_edge(blender_mesh1:bmesh.types.BMesh, blender_mesh2:bmesh.types.
                 shortest_distance = distance
                 closest_edge = mesh_2_edge_id
     
-    return closest_edge
+    return closest_edge, shortest_distance
 
 def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new_faces:Array, new_layer_map:simple_morph_219_layer_map ) -> dict | dict | dict:
     """

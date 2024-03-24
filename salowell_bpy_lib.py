@@ -806,6 +806,16 @@ def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:
             An array of each bmesh created from a bevel operation (0-2 in length)
         An array of the newly created faces (Note: Sometimes their IDs can match previous face IDs from before the bevel was performed.)
     """
+    
+    if offset <= 0.0:
+        offset = 0.1
+    
+    if offset_pct <= 0.0:
+        offset_pct = 0.1
+    
+    if segments < 1:
+        segments = 1
+    
     if offset_type == 'PERCENT':
         offset = offset_pct
     

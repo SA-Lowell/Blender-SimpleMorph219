@@ -261,44 +261,20 @@ def get_faces_of_edge_bmesh( blender_mesh:bmesh, edge:int, select_state:int = 0,
         mesh.faces.ensure_lookup_table()
     
     if select_state == 1:
-        for face in mesh.faces:
-            found_first = False
-            
+        for face in mesh.edges[edge].link_faces:
             if not face.index in owner_faces_indexes and face.index in selected_faces:
-                for _, value in enumerate( face.verts ):
-                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
-                        if found_first:
-                            owner_faces.append( face )
-                            owner_faces_indexes.append( face.index )
-                            break
-                        
-                        found_first = True
+                owner_faces.append( face )
+                owner_faces_indexes.append( face.index )
     elif select_state == -1:
-        for face in mesh.faces:
-            found_first = False
-            
+        for face in mesh.edges[edge].link_faces:
             if not face.index in owner_faces_indexes and not face.index in selected_faces:
-                for _, value in enumerate( face.verts ):
-                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
-                        if found_first:
-                            owner_faces.append( face )
-                            owner_faces_indexes.append( face.index )
-                            break
-                        
-                        found_first = True
+                owner_faces.append( face )
+                owner_faces_indexes.append( face.index )
     else:
-        for face in mesh.faces:
-            found_first = False
-            
+        for face in mesh.edges[edge].link_faces:
             if not face.index in owner_faces_indexes:
-                for _, value in enumerate( face.verts ):
-                    if value == mesh.edges[ edge ].verts[0] or value == mesh.edges[ edge ].verts[1]:
-                        if found_first:
-                            owner_faces.append( face )
-                            owner_faces_indexes.append( face.index )
-                            break
-                        
-                        found_first = True
+                owner_faces.append( face )
+                owner_faces_indexes.append( face.index )
     
     return owner_faces, owner_faces_indexes
 
@@ -966,7 +942,7 @@ def get_bounding_edges_of_face_groups( obj:bmesh.types.BMesh, faces:Array ) -> A
             if not face in processed_faces:
                 processed_faces.append(face)
                 
-                for edge in obj.edges:
+                for edge in obj.faces[face].edges:
                     if not edge.index in processed_edges:
                         processed_edges.append(edge.index)
                         

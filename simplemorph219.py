@@ -4,6 +4,8 @@ from bpy.props import EnumProperty
 from bpy.types import Operator, Panel, Object
 
 import mathutils
+import bmesh
+import math
 
 from . import salowell_bpy_lib, realcorner219
 
@@ -12,6 +14,18 @@ simpleMorph219BaseName = 'simpleMorph219_Base'
 
 classes = [ realcorner219.SIMPLE_MORPH_219_REAL_CORNER_PT_panel, realcorner219.SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS ]
 bpy.utils.register_classes_factory(classes)
+
+def selected_array_curve_curve_219_poll(self, object):
+    return object.type == 'CURVE'
+
+bpy.types.Scene.selectedArrayCurveCurve219 = bpy.props.PointerProperty(
+    type = bpy.types.Object,
+    poll = selected_array_curve_curve_219_poll
+)
+
+bpy.types.Scene.selectedArrayCurveObject219 = bpy.props.PointerProperty(
+    type = bpy.types.Object
+)
 
 class SIMPLE_MORPH_219_PT_panel( Panel ):
     bl_idname = 'SIMPLE_MORPH_219_PT_panel'
@@ -37,6 +51,15 @@ class SIMPLE_MORPH_219_PT_panel( Panel ):
         freezeCopyBtn = layout.column()
         freezeCopyBtn.operator( 'simplemorph.219_op', text = 'Freeze Copy' ).action = 'FREEZE_COPY'
         
+        arrayCurve219Selector = layout.column()
+        arrayCurve219Selector.prop_search(context.scene, "selectedArrayCurveCurve219", context.scene, "objects", text = 'Curve')
+        
+        arrayCurve219Selector = layout.column()
+        arrayCurve219Selector.prop_search(context.scene, "selectedArrayCurveObject219", context.scene, "objects", text = 'Object')
+
+        ResetVertexShapesKeyBtn = layout.column()
+        ResetVertexShapesKeyBtn.operator( 'simplemorph.219_op', text = 'Make Array Curve 219' ).action = 'MAKE_ARRAY_CURVE_219'
+
         compileBtn = layout.column()
         compileBtn.operator( 'simplemorph.219_op', text = 'Compile' ).action = 'COMPILE'
         
@@ -147,6 +170,75 @@ class SIMPLE_MORPH_219_DECOMPILE_op( Operator ):
     def decompile( selectedObject ):
         startDecompile( selectedObject )
 
+def calculate_point_on_line_at_distance(line_segment_start_point, line_segment_end_point, distance):
+    direction_vector = line_segment_end_point - line_segment_start_point
+
+    direction_vector.normalize()
+
+    return line_segment_start_point + distance * direction_vector
+
+def is_point_on_line_segment(point, line_segment_start_point, line_segment_end_point, tmp_point_index, tmp_tile_count, tmp_point_path):
+    epsilon:float = 0.0001
+    point = mathutils.Vector((point.x, point.y, point.z, 1.0))
+    line_segment_start_point = mathutils.Vector((line_segment_start_point.x, line_segment_start_point.y, line_segment_start_point.z, 1.0))
+    line_segment_end_point = mathutils.Vector((line_segment_end_point.x, line_segment_end_point.y, line_segment_end_point .z, 1.0))
+
+    line_segment_vector:mathutils.Vector = (line_segment_end_point - line_segment_start_point)
+    line_segment_length:float = line_segment_vector.length
+    line_segment_vector.normalize()
+
+    PRelative = point - line_segment_start_point
+    point_start_distance:float = PRelative.length
+    point_end_distance:float = (point - line_segment_end_point).length
+
+    if point_start_distance < epsilon or point_end_distance < epsilon:
+        return True
+    
+    projection = PRelative.dot(line_segment_vector)
+    closetttt = closest_point_on_line(point, line_segment_start_point, line_segment_end_point)
+    
+    PRelative.normalize()
+    
+    if (point - closetttt).length < epsilon:
+        if (closetttt - line_segment_start_point).length <= line_segment_length and (closetttt - line_segment_end_point).length <= line_segment_length:
+            return True
+    
+    return False
+
+def closest_point_on_line_segment(point, line_start, line_end):
+    point = mathutils.Vector((point.x, point.y, point.z, 1.0))
+    line_start = mathutils.Vector((line_start.x, line_start.y, line_start.z, 1.0))
+    line_end = mathutils.Vector((line_end.x, line_end.y, line_end .z, 1.0))
+    line_direction = line_end - line_start
+
+    point_vector = point - line_start
+
+    dot_product = line_direction.dot(point_vector)
+
+    line_length = line_direction.length
+
+    distance = dot_product / line_length
+
+    if distance < 0:
+        return line_start
+    elif distance > line_length:
+        return line_end
+    
+    closest_point:mathutils.Vector = line_start + distance * line_direction
+    
+    return closest_point
+
+def closest_point_on_line(point, line_start, line_end):
+    point = mathutils.Vector((point.x, point.y, point.z, 1.0))
+    line_start = mathutils.Vector((line_start.x, line_start.y, line_start.z, 1.0))
+    line_end = mathutils.Vector((line_end.x, line_end.y, line_end .z, 1.0))
+    line_direction = line_end - line_start
+    line_direction.normalize()
+    v = point - line_start
+    d = line_direction.dot(v)
+
+    return line_start + line_direction * d
+
 class SIMPLE_MORPH_219_op( Operator ):
     bl_idname = 'simplemorph.219_op'
     bl_label = 'Simplemorph_219_op_label'
@@ -160,11 +252,13 @@ class SIMPLE_MORPH_219_op( Operator ):
             ( 'SET_DEFORM', 'set deform', 'set deform' ),
             ( 'FREEZE_COPY', 'freeze copy', 'freeze copy' ),
             ( 'COMPILE', 'compile', 'compile' ),
-            ( 'RESET_VERTEX_SHAPES', 'reset vertex shapes', 'reset vertex shapes')
+            ( 'RESET_VERTEX_SHAPES', 'reset vertex shapes', 'reset vertex shapes'),
+            ( 'MAKE_ARRAY_CURVE_219', 'Make Array Curve 219', 'Make Array Curve 219')
         ]
     )
     
     def execute( self, context ):
+        epsilon:float = 0.000001
         if self.action == 'CREATE_CONTROLLER':
             self.create_controller( context = context )
         elif self.action == 'DELETE_CONTROLLER':
@@ -177,6 +271,134 @@ class SIMPLE_MORPH_219_op( Operator ):
             self.compile( context = context )
         elif self.action == 'RESET_VERTEX_SHAPES':
             self.reset_vertex_shapes( context = context )
+        elif self.action == 'MAKE_ARRAY_CURVE_219':
+            curve_point_1:mathutils.Vector = None
+            curve_point_2:mathutils.Vector = None
+
+            object_anchor_1_global:mathutils.Vector = None
+            object_anchor_2_global:mathutils.Vector = None
+
+            curve_anchor_point_1:mathutils.Vector = None
+            curve_anchor_point_2:mathutils.Vector = None
+
+            object_copy:bpy.types.Object = context.scene.selectedArrayCurveObject219.copy()
+            object_copy.data = context.scene.selectedArrayCurveObject219.data.copy()
+            object_copy.parent = context.scene.selectedArrayCurveObject219.parent
+            context.collection.objects.link(object_copy)
+
+            object_anchor_point_distance:float = (mathutils.Vector((object_copy['CurveArray219_1'][0], object_copy['CurveArray219_1'][1], object_copy['CurveArray219_1'][2], 1.0)) - mathutils.Vector((object_copy['CurveArray219_2'][0], object_copy['CurveArray219_2'][1], object_copy['CurveArray219_2'][2], 1.0))).length
+            object_anchor_point_vector:mathutils.Vector = None
+            tmp_tile_count = 1
+            
+            for spline in context.scene.selectedArrayCurveCurve219.data.splines:
+                point_index:int = 0
+                
+                object_anchor_1_global = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_1'][0], object_copy['CurveArray219_1'][1], object_copy['CurveArray219_1'][2], 1.0))
+                object_anchor_2_global = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_2'][0], object_copy['CurveArray219_2'][1], object_copy['CurveArray219_2'][2], 1.0))
+                object_anchor_angle = mathutils.Vector((1.0, 0.0, 0.0, 1.0)).angle(object_anchor_2_global - object_anchor_1_global)
+                
+                if (object_anchor_2_global - object_anchor_1_global).y < 0:
+                    object_anchor_angle = -object_anchor_angle
+                
+                object_copy.matrix_world.translation.x = spline.points[point_index].co.x
+                object_copy.matrix_world.translation.y = spline.points[point_index].co.y
+                object_copy.matrix_world.translation.z = spline.points[point_index].co.z
+                bpy.context.view_layer.update()
+                
+                while point_index < len(spline.points):
+                    point_is_on_line_segment:bool = False
+                    loop_starting_point_index:int = point_index#The index at which we started testing for where the 2nd anchor point will be for this object. This is the same index as the line segment.
+                    first_loop:bool = True
+                    
+                    while not point_is_on_line_segment and point_index < len(spline.points):
+                        point = spline.points[point_index]
+                        curve_point_1 = mathutils.Vector((point.co.x, point.co.y, point.co.z, 1.0))#The first point that defines the line segment on Curve
+
+                        if point_index < len(spline.points) - 1:
+                            curve_point_2 = spline.points[point_index + 1].co#The second point that defines the line segment on Curve
+                        else:
+                            curve_point_2 = spline.points[0].co
+                        
+                        curve_point_2 = mathutils.Vector((curve_point_2.x, curve_point_2.y, curve_point_2.z, 1.0))
+                        
+                        if curve_anchor_point_1 is None:
+                            curve_anchor_point_1 = curve_point_1
+                        else:
+                            curve_anchor_point_1 = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_2'][0], object_copy['CurveArray219_2'][1], object_copy['CurveArray219_2'][2], 1.0))
+                        tmp_point_path:str = ''
+
+                        if first_loop:
+                            tmp_point_path = 'A'
+                            point_on_line:mathutils.Vector = calculate_point_on_line_at_distance(curve_anchor_point_1, curve_point_2, object_anchor_point_distance)
+                        else:
+                            tmp_point_path = 'B'
+                            closest_point:mathutils.Vector = closest_point_on_line(curve_anchor_point_1, curve_point_1, curve_point_2)
+                            point_is_on_line_segment = is_point_on_line_segment(closest_point, curve_anchor_point_1, curve_point_2, point_index, tmp_tile_count, tmp_point_path)
+                            
+                            if point_is_on_line_segment:
+                                tmp_point_path = 'C'
+
+                                point_on_line:mathutils.Vector = calculate_point_on_line_at_distance(closest_point, curve_point_2, object_anchor_point_distance)
+                            else:
+                                if curve_anchor_point_1 == closest_point:
+                                    tmp_point_path = 'D'
+                                    point_on_line:mathutils.Vector = calculate_point_on_line_at_distance(curve_anchor_point_1, curve_point_2, object_anchor_point_distance)
+                                else:
+                                    tmp_point_path = 'E'
+                                    side_a_b_length:float = (curve_anchor_point_1 - closest_point).length
+                                    side_a_c_length:float = object_anchor_point_distance
+
+                                    sqrtValue = (side_a_c_length * side_a_c_length) - (side_a_b_length * side_a_b_length)
+                                    
+                                    if sqrtValue < 0:
+                                        sqrtValue = -sqrtValue
+                                    
+                                    side_b_c_length:float = math.sqrt(sqrtValue)
+                                    
+                                    point_on_line:mathutils.Vector = calculate_point_on_line_at_distance(closest_point, curve_point_2, side_b_c_length)
+                        
+                        point_is_on_line_segment = is_point_on_line_segment(point_on_line, curve_point_1, curve_point_2, point_index, tmp_tile_count, tmp_point_path)
+                        
+                        if point_is_on_line_segment:
+                            curve_anchor_point_2 = point_on_line
+                            curve_anchor_angle_vecor = point_on_line - curve_anchor_point_1
+                            curve_anchor_angle = mathutils.Vector((1.0, 0.0, 0.0, 0.0)).angle(curve_anchor_angle_vecor)
+                            if (curve_anchor_point_2 - curve_anchor_point_1).y < 0:
+                                curve_anchor_angle = -curve_anchor_angle
+                            amount_to_rotate = curve_anchor_angle - object_anchor_angle
+                            
+                            object_copy.rotation_euler = (0 + object_copy.rotation_euler.x, 0 + object_copy.rotation_euler.y, amount_to_rotate + object_copy.rotation_euler.z)
+                            bpy.context.view_layer.update()
+
+                            object_anchor_1_global = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_1'][0], object_copy['CurveArray219_1'][1], object_copy['CurveArray219_1'][2], 1.0))
+                            move_direction = object_anchor_1_global - curve_anchor_point_1
+                            object_copy.matrix_world.translation.x -= move_direction.x
+                            object_copy.matrix_world.translation.y -= move_direction.y
+                            object_copy.matrix_world.translation.z -= move_direction.z
+                            bpy.context.view_layer.update()
+
+                            previous_object:bpy.types.Object = object_copy.copy()
+                            previous_object.data = object_copy.data.copy()
+                            object_copy = previous_object
+                            object_copy.data = previous_object.data
+                            object_copy.parent = previous_object.parent
+                            context.collection.objects.link(object_copy)
+
+                            bpy.context.view_layer.update()
+
+                            object_copy.name = 'a'
+
+                            object_anchor_1_global = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_1'][0], object_copy['CurveArray219_1'][1], object_copy['CurveArray219_1'][2], 1.0))
+                            object_anchor_2_global = object_copy.matrix_world @ mathutils.Vector((object_copy['CurveArray219_2'][0], object_copy['CurveArray219_2'][1], object_copy['CurveArray219_2'][2], 1.0))
+                            object_anchor_angle =  mathutils.Vector((1.0, 0.0, 0.0, 1.0)).angle(object_anchor_2_global - object_anchor_1_global)
+
+                            if (object_anchor_2_global - object_anchor_1_global).y < 0:
+                                object_anchor_angle = -object_anchor_angle
+                            tmp_tile_count += 1
+                        else:
+                            point_index += 1
+                        
+                        first_loop = False
         
         return { 'FINISHED' }
     

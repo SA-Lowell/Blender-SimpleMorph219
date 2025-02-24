@@ -929,7 +929,7 @@ def get_bounding_edges_of_face_groups( obj:bmesh.types.BMesh, faces:Array ) -> A
         [3]
         Same as 2, but contains the indexes of the edges instead of the MeshEdge objects
     """
-    face_groups:Array = get_grouped_bevel_faces( obj, faces )
+    face_groups:Array = get_grouped_faces( obj, faces )
     
     bounding_edges:Array = []
     
@@ -1005,107 +1005,83 @@ def object_exists(object_name:str = '') -> bool:
     return True
 
 #TODO: THIS IS WAY TOO SLOW! For the love of god optimize this.
-def get_grouped_bevel_faces( obj, selected_faces:Array ) -> Array:
+def get_grouped_faces( obj, face_indexes:Array ) -> Array:
+    """
+    Groups all of the faces on obj passed in by face_indexes. every face island inside of face_indexes is considered a group.
+    
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The object with a bpy.types.Mesh that contains selected faces.
+    face_indexes: Array
+            A list of the face IDs you wish to group.
+    
+    Returns
+    -------
+        An array of all the faces grouped into islands.
+        [
+            [ FACE GROUP 1
+                FACE ID1,
+                FACE ID2,
+                ...,
+                FACE IDN
+            ],
+            [ FACE GROUP 2
+                FACE ID3,
+                FACE ID4,
+                ...,
+                FACE IDN
+            ],
+        ]
+    """
     obj.faces.ensure_lookup_table()
     obj.edges.ensure_lookup_table()
     
     face_groups:Array = []
     face_queue:Array = []
-    first_face_of_column:int = 0
-    left_column_queue:Array = []
-    right_column_queue:Array = []
     processed_faces:Array = []
-    end_edge_id:int = 0
-    left_edge_id:int = 0
-    right_edge_id:int = 0
     group_index:int = 0
-    column_index:int = 0
     
-    for index in selected_faces:
+    #Loop through all the faces
+    for index in face_indexes:
+        #Check if the face has already been processed, add it to the queue if not, ignore if it has.
         if not index in face_queue and index not in processed_faces:
             face_queue.append(index)
         
-        if len(face_queue) > 0:
-            first_face_of_column = face_queue[0]
-            start_edge_id = obj.faces[ first_face_of_column ].edges[0].index
-            end_edge_id = obj.faces[ first_face_of_column ].edges[2].index
-            left_edge_id = obj.faces[ first_face_of_column ].edges[1].index
-            right_edge_id = obj.faces[ first_face_of_column ].edges[3].index
-        
+        #Add a new face group array if we've moved onto the next group or if this is the first group.
         if len(face_groups) <= group_index and len(face_queue) > 0:
             face_groups.append([])
-            
+        
         face_queue_loop_index:int = 0
         
-        looped_a_queue:bool = False
+        #Loop through all the queued faces.
         while len(face_queue) > 0:
-            looped_a_queue = True
             face = face_queue[0]
             del face_queue[0]
             
+            for edge in obj.faces[ face ].edges:
+                faces_of_edge:Array = get_faces_of_edge_bmesh( obj, edge.index, 1, face_indexes)[1]
+                
+                for face_of_edge in faces_of_edge:
+                    face_of_edge_index = face_of_edge
+                    
+                    if face_of_edge_index not in face_queue and face_of_edge_index not in processed_faces and face_of_edge_index != face:
+                        face_queue.append(face_of_edge)
+                    
+
+            #We add this face to the current face group
             face_groups[group_index].append(face)
+            
+            #We flag that this face has been processed already so that it can be skipped when we meet it again.
             processed_faces.append(face)
-            if face_queue_loop_index != 0:
-                edge_list:Array = [
-                    obj.faces[ face ].edges[0].index,
-                    obj.faces[ face ].edges[1].index,
-                    obj.faces[ face ].edges[2].index,
-                    obj.faces[ face ].edges[3].index
-                ]
-                
-                if end_edge_id not in edge_list:
-                    last_index = 0
-                else:
-                    last_index = edge_list.index(end_edge_id)
-                start_edge_id = obj.faces[ face ].edges[last_index].index
-                
-                end_edge_id = obj.faces[ face ].edges[last_index - 2].index
-                left_edge_id = obj.faces[ face ].edges[last_index - 3].index
-                right_edge_id = obj.faces[ face ].edges[last_index - 1].index
-            
-            faces_of_end_edge:Array = get_faces_of_edge_bmesh( obj, end_edge_id, 1, selected_faces)[1]
-            
-            for end_edge_face in faces_of_end_edge:
-                if end_edge_face not in face_queue and end_edge_face not in processed_faces:
-                    face_queue.append(end_edge_face)
-            
-            faces_of_left_edge:Array = get_faces_of_edge_bmesh( obj, left_edge_id, 1, selected_faces)[1]
-            
-            for left_edge_face in faces_of_left_edge:
-                if left_edge_face not in face_queue and left_edge_face not in processed_faces:
-                    left_column_queue.append(left_edge_face)
-            
-            faces_of_right_edge:Array = get_faces_of_edge_bmesh( obj, right_edge_id, 1, selected_faces)[1]
-            
-            for right_edge_face in faces_of_right_edge:
-                if right_edge_face not in face_queue and right_edge_face not in processed_faces:
-                    right_column_queue.append(right_edge_face)
             
             face_queue_loop_index += 1
         
-        if len(left_column_queue) > 0:
-            face_queue = left_column_queue
-            column_index += 1
-            left_column_queue = []
-        elif len(right_column_queue) > 0:
-            face_queue = right_column_queue
-            column_index += 1
-            right_column_queue = []
-        elif looped_a_queue:
+        if len(face_queue) == 0:
             group_index += 1
-        
-        if len(face_queue) > 0:
-            start_edge_id = obj.faces[ face_queue[0] ].edges[0].index
-            end_edge_id = obj.faces[ face_queue[0] ].edges[2].index
-            left_edge_id = obj.faces[ face_queue[0] ].edges[1].index
-            right_edge_id = obj.faces[ face_queue[0] ].edges[3].index
-
-        face_queue_check = face_queue.copy()
-        face_queue = []
-        
-        for face in face_queue_check:
-            if face not in processed_faces:
-                face_queue.append(face)
+    
+    for face_group in face_groups:
+        face_group.sort()
     
     return face_groups
 

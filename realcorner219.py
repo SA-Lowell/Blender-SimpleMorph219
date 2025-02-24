@@ -976,7 +976,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
 
             current_meshes, _, new_face_ids, _, selected_edge_indexes, _, selected_vertices = gen_real_corner_meshes( bpy.context.selected_objects[0], context.scene.realCorner219Layers )
             
-            salowell_bpy_lib.get_grouped_bevel_faces( current_meshes[-1], new_face_ids[0] )
+            salowell_bpy_lib.get_grouped_faces( current_meshes[-1], new_face_ids[0] )
 
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':

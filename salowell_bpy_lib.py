@@ -1,3 +1,4 @@
+import logging
 from ctypes import Array
 from enum import Enum
 
@@ -8,6 +9,8 @@ from . import realcorner219
 import bpy
 import bmesh
 import mathutils
+
+error_logger_219 = logging.getLogger(__name__)
 
 class bevel_affect_items( Enum ):
     VERTICES = 0
@@ -746,8 +749,54 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
 
 #returns the start, end, left, and right edges relative to a given "start" edge
 #The input face MUST be a quad, no other objects are valid. Works great for bevels.
-def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.BMesh, quad_face_id, start_edge_id ) -> Array |  Array |  Array |  Array |  Array |  Array |  Array |  Array:
+def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.BMesh, quad_face_id, start_edge_id ) -> int |  int |  int |  int |  int |  int |  int |  int:
+    """
+    Returns the edges that represent the start, end, left, and right edges of the input quad, quad_face_id, relative to the edge ID passed in for start_edge_id.
+    The first 4 return values are the actual IDs of those edges within the mesh, and the last 4 are the indexes of those edges relative to the input quad, quad_face_id.
+    The distinction between ID and index here is important, as the is is the overall edge's ID within the entire object, but the index is the index within the face's .edges property.
+    
+    Parameters
+    ----------
+        blender_mesh : bmesh.types.BMesh
+            The Blender Mesh that contains the face and edge.
+        
+        quad_face_id: int
+            the ID of the face within blender_mesh. This face *MUST* be a quad otherwise None is returned for all 8 values.
+        
+        start_edge_id: int
+            The ID of the edge within blender_mesh. This edge must also be part of the input face.
+    
+    Returns
+    -------
+        start_edge_id
+            ID of the starting edge.
+        
+        end_edge_id
+            ID of the edge opposite of the starting edge.
+        
+        left_edge_id
+            ID of the edge next to the starting edge, counter clockwise when looking down from the side of the face normal.
+        
+        right_edge_id
+            ID of the edge next to the starting edge, clockwise when looking down from the side of the face normal.
+        
+        start_edge_index
+             Index of the starting edge within the input face's .edges property.
+        
+        end_edge_index
+            Index of the edge opposite of the starting edge from within the face's .edges property.
+        
+        left_edge_index
+            Index of the edge next to the starting edge, counter clockwise when looking down from the side of the face normal, from within the face's .edges property.
+        
+        right_edge_index
+            Index of the edge next to the starting edge, clockwise when looking down from the side of the face normal, from within the face's .edges property.
+    """
     edges_of_face:Array = get_edges_of_face_bmesh( blender_mesh, quad_face_id )[1]
+    
+    if len(edges_of_face) != 4:
+        error_logger_219.warning('219 Error: Non quad face passed into "get_left_right_start_end_edges_from_start_edge_id()". quad_face_id: ' + str(quad_face_id) + ', start_edge_id: ' + str(start_edge_id) + ', Object Name: ' + bpy.context.active_object.name)
+        return None, None, None, None, None, None, None, None
     
     start_edge_index = edges_of_face.index( start_edge_id )
     

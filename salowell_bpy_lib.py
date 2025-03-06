@@ -528,7 +528,7 @@ def separate_orphaned_and_faced_edges( blender_mesh:bmesh.types.BMesh, edges:Arr
 def order_edges_by_pathing(blender_mesh:bmesh.types.BMesh, edge_ids:Array) -> Array:
     """
     Returns an array of the edge ids sorted in a pathing-like order.
-    The function starts with the smallest id. It then paths out to every other branched edge. Splits use the lower ID value as prededence.
+    The function starts with the smallest id. It then paths out to every other branched edge. Splits use the lower ID value as precedence.
     If the edges have multiple islands, it will iterate over them independently, ordered by the islands with the smallest values first, and then the smallest value of each island first in that island.
     
     Parameters
@@ -674,6 +674,7 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
             face_edge_index += 1
         
         start_edge_id, end_edge_id, left_edge_id, right_edge_id = get_left_right_start_end_edges_from_start_edge_id( new_blender_mesh, faces_of_column[0], parallel_starting_edge )[0:4]
+        
         left_faces:Array = get_faces_of_edge_bmesh( new_blender_mesh, left_edge_id, 1, new_bevel_face_ids_ordered )[1]
         right_faces:Array = get_faces_of_edge_bmesh( new_blender_mesh, right_edge_id, 1, new_bevel_face_ids_ordered )[1]
         
@@ -747,8 +748,6 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
     
     return layer_map
 
-#returns the start, end, left, and right edges relative to a given "start" edge
-#The input face MUST be a quad, no other objects are valid. Works great for bevels.
 def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.BMesh, quad_face_id, start_edge_id ) -> int |  int |  int |  int |  int |  int |  int |  int:
     """
     Returns the edges that represent the start, end, left, and right edges of the input quad, quad_face_id, relative to the edge ID passed in for start_edge_id.

@@ -173,26 +173,29 @@ class simple_morph_219_layer_map():
     
     def set_bmesh( self, blender_mesh:bmesh.types.BMesh ):
         self.blender_mesh = blender_mesh.copy()
-        
+    
     def set_empty( self ) -> None:
         self.blender_mesh = None
         self.previous_blender_mesh = None
         self.new_face_ids = []
         
-        self.beveled_faces_to_original_edge = {}
-        self.beveled_faces_to_last_edge = {}
-        
         self.beveled_vertices_to_original_edge = {}
         self.beveled_vertices_to_last_edge = {}
+        
+        self.beveled_median_vertices_to_last_edge = {}
+        self.beveled_median_vertices_to_original_edge = {}
+        
+        self.beveled_terminating_vertices_to_last_edge = {}
+        self.beveled_terminating_vertices_to_original_edge = {}
         
         self.beveled_edges_to_original_edge = {}
         self.beveled_edges_to_last_edge = {}
         
-        self.beveled_terminating_edges_to_last_edge = {}
-        self.beveled_terminating_edges_to_original_edge = {}
-        
         self.beveled_median_edges_to_last_edge = {}
         self.beveled_median_edges_to_original_edge = {}
+        
+        self.beveled_terminating_edges_to_last_edge = {}
+        self.beveled_terminating_edges_to_original_edge = {}
         
         self.beveled_parallel_edges_to_last_edge = {}
         self.beveled_parallel_edges_to_original_edge = {}
@@ -202,12 +205,12 @@ class simple_morph_219_layer_map():
         
         self.beveled_median_edges_to_last_extend_edge = {}
         
-        self.beveled_terminating_vertices_to_last_edge = {}
-        self.beveled_terminating_vertices_to_original_edge = {}
+        self.beveled_faces_to_original_edge = {}
+        self.beveled_faces_to_last_edge = {}
         
-        self.beveled_median_vertices_to_last_edge = {}
-        self.beveled_median_vertices_to_original_edge = {}
-
+        self.beveled_terminating_faces_to_original_vertex = {}
+        self.beveled_terminating_faces_to_last_vertex = {}
+        
         self.unbeveled_vertices = {}
         self.unbeveled_edges = {}
         self.unbeveled_faces = {}
@@ -225,6 +228,41 @@ class simple_morph_219_layer_map():
         return False
 
 def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, new_face_id:int, original_anchor_edge_id:int, new_anchor_edge_id:int, layer_map:simple_morph_219_layer_map, new_edges_to_ignore:Array ) -> Array:
+    
+    def __str__( self ) -> str:
+        stringed:str = ''
+        
+        stringed += 'blender_mesh: ' + str(self.blender_mesh) + '\n'
+        stringed += 'previous_blender_mesh: ' + str(self.previous_blender_mesh) + '\n'
+        stringed += 'previous_selected_edges : ' + str(self.previous_selected_edges) + '\n'
+        stringed += 'new_face_ids: ' + str(self.new_face_ids) + '\n'
+        stringed += 'beveled_vertices_to_original_edge: ' + str(self.beveled_vertices_to_original_edge) + '\n'
+        stringed += 'beveled_vertices_to_last_edge: ' + str(self.beveled_vertices_to_last_edge) + '\n'
+        stringed += 'beveled_median_vertices_to_last_edge: ' + str(self.beveled_median_vertices_to_last_edge) + '\n'
+        stringed += 'beveled_median_vertices_to_original_edge: ' + str(self.beveled_median_vertices_to_original_edge) + '\n'
+        stringed += 'beveled_terminating_vertices_to_last_edge: ' + str(self.beveled_terminating_vertices_to_last_edge) + '\n'
+        stringed += 'beveled_terminating_vertices_to_original_edge: ' + str(self.beveled_terminating_vertices_to_original_edge) + '\n'
+        stringed += 'beveled_edges_to_original_edge: ' + str(self.beveled_edges_to_original_edge) + '\n'
+        stringed += 'beveled_edges_to_last_edge: ' + str(self.beveled_edges_to_last_edge) + '\n'
+        stringed += 'beveled_median_edges_to_last_edge: ' + str(self.beveled_median_edges_to_last_edge) + '\n'
+        stringed += 'beveled_median_edges_to_original_edge: ' + str(self.beveled_median_edges_to_original_edge) + '\n'
+        stringed += 'beveled_terminating_edges_to_last_edge: ' + str(self.beveled_terminating_edges_to_last_edge) + '\n'
+        stringed += 'beveled_terminating_edges_to_original_edge: ' + str(self.beveled_terminating_edges_to_original_edge) + '\n'
+        stringed += 'beveled_parallel_edges_to_last_edge: ' + str(self.beveled_parallel_edges_to_last_edge) + '\n'
+        stringed += 'beveled_parallel_edges_to_original_edge: ' + str(self.beveled_parallel_edges_to_original_edge) + '\n'
+        stringed += 'beveled_endstart_edges_to_original_edge: ' + str(self.beveled_endstart_edges_to_original_edge) + '\n'
+        stringed += 'beveled_endstart_edges_to_last_edge: ' + str(self.beveled_endstart_edges_to_last_edge) + '\n'
+        stringed += 'beveled_median_edges_to_last_extend_edge: ' + str(self.beveled_median_edges_to_last_extend_edge) + '\n'
+        stringed += 'beveled_faces_to_original_edge: ' + str(self.beveled_faces_to_original_edge) + '\n'
+        stringed += 'beveled_faces_to_last_edge: ' + str(self.beveled_faces_to_last_edge) + '\n'
+        stringed += 'beveled_terminating_faces_to_original_vertex: ' + str(self.beveled_terminating_faces_to_original_vertex) + '\n'
+        stringed += 'beveled_terminating_faces_to_last_vertex: ' + str(self.beveled_terminating_faces_to_last_vertex) + '\n'
+        stringed += 'unbeveled_vertices: ' + str(self.unbeveled_vertices) + '\n'
+        stringed += 'unbeveled_edges: ' + str(self.unbeveled_edges) + '\n'
+        stringed += 'unbeveled_faces: ' + str(self.unbeveled_faces) + '\n'
+        
+        return stringed
+
     original_face_edge_ids_tmp:Array = [ edge.index for edge in original_mesh.faces[ original_face_id ].edges ]
     new_face_edge_ids_tmp:Array = [ edge.index for edge in new_mesh.faces[ new_face_id ].edges ]
     original_face_edge_ids:Array = []
@@ -242,7 +280,7 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     
     mapped_edges:Array = []
     mapped_edges_tmp:Array = []
-
+    
     new_face_edge_ids_tmp = new_face_edge_ids.copy()
     new_face_edge_ids = []
     
@@ -449,12 +487,9 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if original_face not in face_map:
                 face_map[original_face] = new_face
             
-            surrounding_faces:Array = []
-            
             mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
             
             for mapped_face_edge in mapped_face_edges:
-                
                 if mapped_face_edge[1] not in bounding_edges and mapped_face_edge[0] not in new_layer_map.previous_selected_edges:
                     original_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, mapped_face_edge[0] )[1]
                     new_faces_of_edge = salowell_bpy_lib.get_faces_of_edge_bmesh( new_mesh, mapped_face_edge[1] )[1]

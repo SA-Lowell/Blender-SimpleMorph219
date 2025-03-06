@@ -585,7 +585,7 @@ def order_edges_by_pathing(blender_mesh:bmesh.types.BMesh, edge_ids:Array) -> Ar
 
 #TODO: If you order the pre-bevel edges by ID number (0-n), and then order the newly created bevel faces by id number (0-n), you can pair them up using these ordered values!!!!!.
 #Do not try to dsetermine left and right based on largest and smallest faces in each row. The order can swap here.
-def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blender_mesh:bmesh.types.BMesh, new_bevel_face_ids_in:Array, previous_unbeveled_edge_ids_in:Array ) -> dict:
+def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blender_mesh:bmesh.types.BMesh, new_bevel_face_ids_in:Array, previous_unbeveled_edge_ids_in:Array, bevel_segments:int) -> dict:
     bounding_edge_ids = get_bounding_edges_of_face_groups(new_blender_mesh, new_bevel_face_ids_in)[3]
     layer_map:realcorner219.simple_morph_219_layer_map = realcorner219.simple_morph_219_layer_map()
     layer_map.set_empty()
@@ -595,6 +595,10 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
 
     new_bevel_face_ids_ordered:Array = new_bevel_face_ids_in.copy()
     new_bevel_face_ids_ordered.sort()
+
+    #This variable is a copy of the new faces but without the terminator faces. The terminator faces are *always* the lower bounds of new face IDs, while the actual columns that were formed from the previous edge are always the upper bounds of the IDs.
+    non_terminator_start_index:int = len(new_bevel_face_ids_in) - (bevel_segments * len(previous_unbeveled_edge_ids_in))
+    new_bevel_face_ids_ordered_without_terminators:Array = new_bevel_face_ids_ordered[non_terminator_start_index:]
     
     previous_unbeveled_edge_ids_ordered:Array = previous_unbeveled_edge_ids_in.copy()
     previous_unbeveled_edge_ids_ordered.sort()
@@ -627,15 +631,14 @@ def generate_bevel_layer_map( new_blender_mesh:bmesh.types.BMesh, previous_blend
     
     index:int = 0
     
-    faces_per_column:int = int(len(new_bevel_face_ids_ordered) / len(previous_unbeveled_edge_ids_ordered))
+    faces_per_column:int = bevel_segments
     
     for previous_unbeveled_edge_id  in previous_unbeveled_edge_ids_pathed:
         previous_unbeveled_edge_id_index = previous_unbeveled_edge_ids_ordered.index(previous_unbeveled_edge_id)
-        #Grabbing these faces of a column is currently hardcoded to always be the same length on each column. This works for all use cases in this plugin.
-        #It will have to change once I start allowing terminating bevel endpoints that result in new faces that can't be mapped back to previous edges, but, instead, mapped as terminating endpoints of a bevel path.
+        
         faces_of_column_range_start:int = previous_unbeveled_edge_id_index * faces_per_column
-        faces_of_column:Array = new_bevel_face_ids_ordered[faces_of_column_range_start:faces_of_column_range_start + faces_per_column]
-    
+        faces_of_column:Array = new_bevel_face_ids_ordered_without_terminators[faces_of_column_range_start:faces_of_column_range_start + faces_per_column]
+        
         parallel_starting_edge:int = 0
         smallest_angle:float = 0.0
         

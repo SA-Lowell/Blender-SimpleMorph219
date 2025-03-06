@@ -226,8 +226,6 @@ class simple_morph_219_layer_map():
                     return True
         
         return False
-
-def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, new_face_id:int, original_anchor_edge_id:int, new_anchor_edge_id:int, layer_map:simple_morph_219_layer_map, new_edges_to_ignore:Array ) -> Array:
     
     def __str__( self ) -> str:
         stringed:str = ''
@@ -263,6 +261,42 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
         
         return stringed
 
+def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, new_face_id:int, layer_map:simple_morph_219_layer_map, new_edges_to_ignore:Array, original_edges_to_ignore:Array ) -> Array:
+    """
+    Maps all edges, of original_face_id from original_mesh onto new_face_id from _new_mesh. This operation skips over new_edgess_to_ignore from new_face_id and original_edges_to_ignore from new_mesh
+    
+    Parameters
+    ----------
+    original_mesh : bmesh
+        The original mesh that contains the face original_face_id
+    
+    new_mesh : bmesh
+        The new mesh that contains the face new_face_id
+    
+    original_face_id : int
+        ID of the face from original_mesh
+    
+    new_face_id : int
+        ID of the face from new_mesh
+    
+    layer_map : simple_morph_219_layer_map
+        A simple_morph_219_layer_map object. It *MUST* already have its beveled_median_edges_to_last_edge value calcualted.
+    
+    Returns
+    -------
+        An array of mapped edges. Each entry in the array is a 2D array:
+            0:
+                [
+                    0: Id of the edge from original_face_id,
+                    1: ID of the edge from new_face_id,
+                ],
+            ...,
+            n:
+                [
+                    0: Id of the edge from original_face_id,
+                    1: ID of the edge from new_face_id,
+                ],
+    """
     original_face_edge_ids_tmp:Array = [ edge.index for edge in original_mesh.faces[ original_face_id ].edges ]
     new_face_edge_ids_tmp:Array = [ edge.index for edge in new_mesh.faces[ new_face_id ].edges ]
     original_face_edge_ids:Array = []
@@ -271,7 +305,7 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     for edge_id in new_face_edge_ids_tmp:
         ignore:bool = False
         for median_edge_group_id in layer_map.beveled_median_edges_to_last_edge:
-            if edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][0] or edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][1]:
+            if edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][0] or edge_id in layer_map.beveled_median_edges_to_last_edge[median_edge_group_id][1] or edge_id in new_edges_to_ignore:
                 ignore = True
                 break
         
@@ -279,7 +313,6 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
             new_face_edge_ids.append(edge_id)
     
     mapped_edges:Array = []
-    mapped_edges_tmp:Array = []
     
     new_face_edge_ids_tmp = new_face_edge_ids.copy()
     new_face_edge_ids = []
@@ -288,6 +321,12 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     closest_distance:float = 0.0
     closest_new_edge:int = 0
     closest_original_edge:int = 0
+    original_face_edge_ids_tmp_copy:Array = original_face_edge_ids_tmp
+    original_face_edge_ids_tmp = []
+    
+    for original_face_edge_id in original_face_edge_ids_tmp_copy:
+        if original_face_edge_id not in original_edges_to_ignore:
+            original_face_edge_ids_tmp.append(original_face_edge_id)
     
     for original_face_edge_id in original_face_edge_ids_tmp:
         new_edge, distance = get_closest_edge(original_mesh, new_mesh, original_face_edge_id, new_face_edge_ids_tmp)
@@ -306,13 +345,9 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     original_edge_index:int = original_face_edge_ids_tmp.index(closest_original_edge)
     
     for original_face_edge_id in original_face_edge_ids_tmp:
-        mapped_edges_tmp.append([original_face_edge_ids_tmp[original_edge_index], new_face_edge_ids_tmp[new_edge_index]])
+        mapped_edges.append([original_face_edge_ids_tmp[original_edge_index], new_face_edge_ids_tmp[new_edge_index]])
         new_edge_index -= 1
         original_edge_index -= 1
-    
-    for mapped_edge in mapped_edges_tmp:
-        if mapped_edge[1] not in new_edges_to_ignore:
-            mapped_edges.append(mapped_edge)
     
     return mapped_edges
 
@@ -384,6 +419,11 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
     
     seed:bool = True
     
+    previous_mesh_beveled_edge_ids:Array = []
+    
+    for previous_mesh_edge_id in new_layer_map.beveled_endstart_edges_to_last_edge:
+         previous_mesh_beveled_edge_ids.append(previous_mesh_edge_id)
+    
     for previous_mesh_edge in new_layer_map.beveled_endstart_edges_to_last_edge:
         original_mesh_faces = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, previous_mesh_edge )[1]
         new_mesh_faces:Array = [0, 0]
@@ -403,7 +443,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if seed:
                 seed = False
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], 0, 0, new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -468,7 +508,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for edge in new_mesh.faces[new_face].edges:
                     new_edge_array.append(edge.index)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -478,7 +518,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 
                 closest_edge_id = get_closest_edge(original_mesh, new_mesh, original_mesh.faces[original_face].edges[0].index, new_mesh_edge_ids)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -487,7 +527,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if original_face not in face_map:
                 face_map[original_face] = new_face
             
-            mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, 0, 0, new_layer_map, bounding_edges )
+            mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
             
             for mapped_face_edge in mapped_face_edges:
                 if mapped_face_edge[1] not in bounding_edges and mapped_face_edge[0] not in new_layer_map.previous_selected_edges:
@@ -1781,7 +1821,7 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
             
             new_blender_mesh:bmesh.types.BMesh = bevel_result[0][-1].copy()
             
-            layer_map = salowell_bpy_lib.generate_bevel_layer_map(new_blender_mesh, previous_blender_mesh, bevel_result[2].copy(), edges_to_bevel.copy() )
+            layer_map = salowell_bpy_lib.generate_bevel_layer_map(new_blender_mesh, previous_blender_mesh, bevel_result[2].copy(), edges_to_bevel.copy(), propDic[ 'bevel_settings' ][ 'segments' ])
             simple_morph_219_obj.set_layer(realCornerPropKeys[ propKey ], layer_map )
             
             simple_morph_219_obj

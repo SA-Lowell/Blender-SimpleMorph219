@@ -1010,10 +1010,24 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked
         
         if self.action == 'TEST_QUICK':
-            generated_meshes1, selected_face_objects1, selected_face_indexes1, selected_edge_objects1, selected_edge_indexes1, selected_vertex_objects1, selected_vertices1 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_0' )
-            generated_meshes2, selected_face_objects2, selected_face_indexes2, selected_edge_objects2, selected_edge_indexes2, selected_vertex_objects2, selected_vertices2 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_1' )
-            generated_meshes3, selected_face_objects3, selected_face_indexes3, selected_edge_objects3, selected_edge_indexes3, selected_vertex_objects3, selected_vertices3 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_2' )
-            generated_meshes4, selected_face_objects4, selected_face_indexes4, selected_edge_objects4, selected_edge_indexes4, selected_vertex_objects4, selected_vertices4 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_3' )
+            previous_mesh_name = 'Cube'
+            new_mesh_name = 'Cube.001'
+            bevel_segment_count = 3
+            
+            previous_mesh = bpy.data.objects[previous_mesh_name].data
+            new_mesh = bpy.data.objects[new_mesh_name].data
+            
+            previous_bmesh = salowell_bpy_lib.mesh_to_bmesh(previous_mesh)
+            new_bmesh = salowell_bpy_lib.mesh_to_bmesh(new_mesh)
+            
+            previous_unbeveled_edge_ids_in:Array = [v.index for v in previous_mesh.edges if v.select]
+            new_bevel_face_ids_in:Array = [v.index for v in new_mesh.polygons if v.select]
+            
+            print(salowell_bpy_lib.generate_bevel_layer_map( new_bmesh, previous_bmesh, new_bevel_face_ids_in, previous_unbeveled_edge_ids_in, bevel_segment_count ))
+            #generated_meshes1, selected_face_objects1, selected_face_indexes1, selected_edge_objects1, selected_edge_indexes1, selected_vertex_objects1, selected_vertices1 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_0' )
+            #generated_meshes2, selected_face_objects2, selected_face_indexes2, selected_edge_objects2, selected_edge_indexes2, selected_vertex_objects2, selected_vertices2 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_1' )
+            #generated_meshes3, selected_face_objects3, selected_face_indexes3, selected_edge_objects3, selected_edge_indexes3, selected_vertex_objects3, selected_vertices3 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_2' )
+            #generated_meshes4, selected_face_objects4, selected_face_indexes4, selected_edge_objects4, selected_edge_indexes4, selected_vertex_objects4, selected_vertices4 = gen_real_corner_meshes( bpy.data.objects['Cube'], 'realCorner219_3' )
             return { 'FINISHED' }
             base_blender_mesh = salowell_bpy_lib.mesh_to_bmesh(bpy.data.objects['Cube'].data)
             

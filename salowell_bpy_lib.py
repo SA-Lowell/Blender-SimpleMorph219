@@ -1100,8 +1100,9 @@ def get_grouped_faces( obj, face_indexes:Array ) -> Array:
             face_queue.append(index)
         
         #Add a new face group array if we've moved onto the next group or if this is the first group.
-        if len(face_groups) <= group_index and len(face_queue) > 0:
+        if len(face_queue) > 0:
             face_groups.append([])
+            group_index = len(face_groups) - 1
         
         face_queue_loop_index:int = 0
         
@@ -1118,8 +1119,7 @@ def get_grouped_faces( obj, face_indexes:Array ) -> Array:
                     
                     if face_of_edge_index not in face_queue and face_of_edge_index not in processed_faces and face_of_edge_index != face:
                         face_queue.append(face_of_edge)
-                    
-
+            
             #We add this face to the current face group
             face_groups[group_index].append(face)
             
@@ -1127,9 +1127,6 @@ def get_grouped_faces( obj, face_indexes:Array ) -> Array:
             processed_faces.append(face)
             
             face_queue_loop_index += 1
-        
-        if len(face_queue) == 0:
-            group_index += 1
     
     for face_group in face_groups:
         face_group.sort()

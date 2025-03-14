@@ -138,34 +138,40 @@ class simple_morph_219_layer_map():
     previous_selected_edges:Array = []#Array of the edges that were selected to perform the bevel which created this new blender_mesh
     new_face_ids:Array = []
     
-    beveled_faces_to_original_edge:dict = {}#The newely beveled faces mapped to the original layer edge.
-    beveled_faces_to_last_edge:dict = {}#The newely beveled faces mapped to the previous layer edge.
-    
     beveled_vertices_to_original_edge:dict = {}#The newely beveled vertices mapped back to the original layer edge
     beveled_vertices_to_last_edge:dict = {}#The newely beveled vertices mapped back to the last edge.
+    beveled_vertices_to_last_vertex:dict = {}#The newely beveled vertices mapped back to the last vertex.
+    
+    beveled_median_vertices_to_last_edge:dict = {}
+    beveled_median_vertices_to_original_edge:dict = {}
+
+    beveled_terminating_vertices_to_last_edge:dict = {}
+    beveled_terminating_vertices_to_original_edge:dict = {}
     
     beveled_edges_to_original_edge:dict = {}
     beveled_edges_to_last_edge:dict = {}
-    
-    beveled_terminating_edges_to_last_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
-    beveled_terminating_edges_to_original_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
+    beveled_edges_to_last_vertex:dict = {}
     
     beveled_median_edges_to_last_edge:dict = {}#Edges formed between two beveled corners.
     beveled_median_edges_to_original_edge:dict = {}#Edges formed between two beveled corners.
     
-    beveled_parallel_edges_to_last_edge = {}#Edges formed parallel along a bevel
-    beveled_parallel_edges_to_original_edge = {}#Edges formed parallel along a bevel
+    beveled_terminating_edges_to_last_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
+    beveled_terminating_edges_to_original_edge:dict = {}#Edges at the end of a bevel, beyond wich there are no connecting bevels.
+    
+    beveled_parallel_edges_to_last_edge:dict = {}#Edges formed parallel along a bevel
+    beveled_parallel_edges_to_original_edge:dict = {}#Edges formed parallel along a bevel
     
     beveled_endstart_edges_to_original_edge:dict = {} #The edges that define the start and end of a bevel
     beveled_endstart_edges_to_last_edge:dict = {} #The edges that define the start and end of a bevel
     
     beveled_median_edges_to_last_extend_edge:dict = {}#Edges formed between two beveled edges linked to the previous edge they extend.
     
-    beveled_terminating_vertices_to_last_edge:dict = {}
-    beveled_terminating_vertices_to_original_edge:dict = {}
+    beveled_faces_to_original_edge:dict = {}#The newely beveled faces mapped to the original layer edge.
+    beveled_faces_to_last_edge:dict = {}#The newely beveled faces mapped to the previous layer edge.
+    beveled_faces_to_last_vertex:dict = {}
     
-    beveled_median_vertices_to_last_edge:dict = {}
-    beveled_median_vertices_to_original_edge:dict = {}
+    beveled_terminating_faces_to_original_vertex:dict = {}
+    beveled_terminating_faces_to_last_vertex:dict = {}
     
     unbeveled_vertices:dict = {}#The unbeveled vertices mapped back to their previous IDs
     unbeveled_edges:dict = {}#The unbeveled edges mapped back to their previous IDs
@@ -177,11 +183,13 @@ class simple_morph_219_layer_map():
     def set_empty( self ) -> None:
         self.blender_mesh = None
         self.previous_blender_mesh = None
+        self.previous_selected_edges = []
         self.new_face_ids = []
         
         self.beveled_vertices_to_original_edge = {}
         self.beveled_vertices_to_last_edge = {}
-        
+        self.beveled_vertices_to_last_vertex = {}
+
         self.beveled_median_vertices_to_last_edge = {}
         self.beveled_median_vertices_to_original_edge = {}
         
@@ -190,6 +198,7 @@ class simple_morph_219_layer_map():
         
         self.beveled_edges_to_original_edge = {}
         self.beveled_edges_to_last_edge = {}
+        self.beveled_edges_to_last_vertex = {}
         
         self.beveled_median_edges_to_last_edge = {}
         self.beveled_median_edges_to_original_edge = {}
@@ -207,6 +216,7 @@ class simple_morph_219_layer_map():
         
         self.beveled_faces_to_original_edge = {}
         self.beveled_faces_to_last_edge = {}
+        self.beveled_faces_to_last_vertex = {}
         
         self.beveled_terminating_faces_to_original_vertex = {}
         self.beveled_terminating_faces_to_last_vertex = {}
@@ -236,12 +246,14 @@ class simple_morph_219_layer_map():
         stringed += 'new_face_ids: ' + str(self.new_face_ids) + '\n'
         stringed += 'beveled_vertices_to_original_edge: ' + str(self.beveled_vertices_to_original_edge) + '\n'
         stringed += 'beveled_vertices_to_last_edge: ' + str(self.beveled_vertices_to_last_edge) + '\n'
+        stringed += 'beveled_vertices_to_last_vertex: ' + str(self.beveled_vertices_to_last_vertex) + '\n'
         stringed += 'beveled_median_vertices_to_last_edge: ' + str(self.beveled_median_vertices_to_last_edge) + '\n'
         stringed += 'beveled_median_vertices_to_original_edge: ' + str(self.beveled_median_vertices_to_original_edge) + '\n'
         stringed += 'beveled_terminating_vertices_to_last_edge: ' + str(self.beveled_terminating_vertices_to_last_edge) + '\n'
         stringed += 'beveled_terminating_vertices_to_original_edge: ' + str(self.beveled_terminating_vertices_to_original_edge) + '\n'
         stringed += 'beveled_edges_to_original_edge: ' + str(self.beveled_edges_to_original_edge) + '\n'
         stringed += 'beveled_edges_to_last_edge: ' + str(self.beveled_edges_to_last_edge) + '\n'
+        stringed += 'beveled_edges_to_last_vertex: ' + str(self.beveled_edges_to_last_vertex) + '\n'
         stringed += 'beveled_median_edges_to_last_edge: ' + str(self.beveled_median_edges_to_last_edge) + '\n'
         stringed += 'beveled_median_edges_to_original_edge: ' + str(self.beveled_median_edges_to_original_edge) + '\n'
         stringed += 'beveled_terminating_edges_to_last_edge: ' + str(self.beveled_terminating_edges_to_last_edge) + '\n'
@@ -253,6 +265,7 @@ class simple_morph_219_layer_map():
         stringed += 'beveled_median_edges_to_last_extend_edge: ' + str(self.beveled_median_edges_to_last_extend_edge) + '\n'
         stringed += 'beveled_faces_to_original_edge: ' + str(self.beveled_faces_to_original_edge) + '\n'
         stringed += 'beveled_faces_to_last_edge: ' + str(self.beveled_faces_to_last_edge) + '\n'
+        stringed += 'beveled_faces_to_last_vertex: ' + str(self.beveled_faces_to_last_vertex) + '\n'
         stringed += 'beveled_terminating_faces_to_original_vertex: ' + str(self.beveled_terminating_faces_to_original_vertex) + '\n'
         stringed += 'beveled_terminating_faces_to_last_vertex: ' + str(self.beveled_terminating_faces_to_last_vertex) + '\n'
         stringed += 'unbeveled_vertices: ' + str(self.unbeveled_vertices) + '\n'

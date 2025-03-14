@@ -853,6 +853,10 @@ def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.
     if len(edges_of_face) != 4:
         error_logger_219.warning('219 Error: Non quad face passed into "get_left_right_start_end_edges_from_start_edge_id()". quad_face_id: ' + str(quad_face_id) + ', start_edge_id: ' + str(start_edge_id) + ', Object Name: ' + bpy.context.active_object.name)
         return None, None, None, None, None, None, None, None
+
+    if start_edge_id not in edges_of_face:
+        error_logger_219.warning('219 Error: quad_face_id[' + str(quad_face_id) + '] passed into "get_left_right_start_end_edges_from_start_edge_id()". Does not contain start_edge_id[' + str(start_edge_id) + '] within Bmesh ' + str(blender_mesh))
+        return None, None, None, None, None, None, None, None
     
     start_edge_index = edges_of_face.index( start_edge_id )
     

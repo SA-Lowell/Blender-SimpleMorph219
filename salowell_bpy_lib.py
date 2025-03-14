@@ -751,6 +751,60 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
     
     return layer_map
 
+def get_edges_from_faces(blender_mesh:bmesh.types.BMesh, face_ids:Array) -> Array:
+    """
+    Returns an array of all unique edge IDs found across all the given face_ids within blender_mesh
+    
+    Parameters
+    ----------
+        blender_mesh : bmesh.types.BMesh
+            The Blender Mesh that contains the faces.
+        
+        face_ids: Array
+            A list of all the face IDs to query within blender_mesh
+    
+    Returns
+    -------
+        An array of all the edge IDs found within the face_ids of blender_mesh. This will not contain any duplicates.
+    """
+    blender_mesh.edges.ensure_lookup_table()
+    
+    edge_ids:Array = []
+    
+    for face_id in face_ids:
+        for edge in blender_mesh.faces[face_id].edges:
+            if edge.index not in edge_ids:
+                edge_ids.append(edge.index)
+    
+    return edge_ids
+
+def get_vertices_from_edges(blender_mesh:bmesh.types.BMesh, edge_ids:Array) -> Array:
+    """
+    Returns an array of all unique vertex IDs found across all the given edge_ids within blender_mesh
+    
+    Parameters
+    ----------
+        blender_mesh : bmesh.types.BMesh
+            The Blender Mesh that contains the edges.
+        
+        edge_ids: Array
+            A list of all the edge IDs to query within blender_mesh
+    
+    Returns
+    -------
+        An array of all the vertex IDs found within the edge_ids of blender_mesh. This will not contain any duplicates.
+    """
+    blender_mesh.verts.ensure_lookup_table()
+    
+    vertex_ids:Array = []
+    
+    for edge_id in edge_ids:
+        for vertex in blender_mesh.edges[edge_id].verts:
+            if vertex.index not in vertex_ids:
+                vertex_ids.append(vertex.index)
+    
+    return vertex_ids
+    
 def get_left_right_start_end_edges_from_start_edge_id( blender_mesh:bmesh.types.BMesh, quad_face_id, start_edge_id ) -> int |  int |  int |  int |  int |  int |  int |  int:
     """
     Returns the edges that represent the start, end, left, and right edges of the input quad, quad_face_id, relative to the edge ID passed in for start_edge_id.

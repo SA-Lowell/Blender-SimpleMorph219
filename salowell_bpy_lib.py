@@ -600,6 +600,9 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
     non_terminator_start_index:int = len(new_bevel_face_ids_in) - (bevel_segments * len(previous_unbeveled_edge_ids_in))
     new_bevel_face_ids_ordered_without_terminators:Array = new_bevel_face_ids_ordered[non_terminator_start_index:]
     
+    new_bevel_terminator_and_corner_faces_grouped:Array = get_grouped_faces(new_blender_mesh, new_bevel_face_ids_ordered[0:non_terminator_start_index])
+    processed_new_bevel_terminator_and_corner_faces_grouped:Array = []
+    
     previous_unbeveled_edge_ids_ordered:Array = previous_unbeveled_edge_ids_in.copy()
     previous_unbeveled_edge_ids_ordered.sort()
     
@@ -617,6 +620,7 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
     right_edge_id:int = 0
     
     processed_faces:Array = []
+    processed_previous_vertices:Array = []
     
     seed:bool = True
     
@@ -740,6 +744,124 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
         layer_map.beveled_parallel_edges_to_last_edge[previous_unbeveled_edge_id] = parallel_edges
         layer_map.beveled_endstart_edges_to_last_edge[previous_unbeveled_edge_id] = [parallel_edges[0], parallel_edges[-1]]
         layer_map.beveled_median_edges_to_last_edge[previous_unbeveled_edge_id] = [left_edges, right_edges]
+        
+        left_vertices:Array = []
+        right_vertices:Array = []
+        
+        left_edges_index:int = 0
+        first_left_vertex_id:int = 0
+        left_vertices_swap:bool = False
+        
+        for left_edge_id in left_edges:
+            left_edge_vertex_0_id = new_blender_mesh.edges[left_edge_id].verts[0].index
+            left_edge_vertex_1_id = new_blender_mesh.edges[left_edge_id].verts[1].index
+            
+            if left_edge_vertex_0_id not in left_vertices:
+                left_vertices.append(left_edge_vertex_0_id)
+            
+            if left_edge_vertex_1_id not in left_vertices:
+                left_vertices.append(left_edge_vertex_1_id)
+            
+            if left_edges_index == 0:
+                first_left_vertex_id = left_edge_vertex_0_id
+            else:
+                if left_edge_vertex_0_id == first_left_vertex_id or left_edge_vertex_1_id == first_left_vertex_id:
+                    left_vertices_swap = True
+                
+            left_edges_index += 1
+        
+        if left_vertices_swap:
+            first_left_vertex_index:int = left_vertices[0]
+            left_vertices[0] = left_vertices[1]
+            left_vertices[1] = first_left_vertex_index
+        
+        right_edges_index:int = 0
+        first_right_vertex_id:int = 0
+        right_vertices_swap:bool = False
+
+        for right_edge_id in right_edges:
+            right_edge_vertex_0_id = new_blender_mesh.edges[right_edge_id].verts[0].index
+            right_edge_vertex_1_id = new_blender_mesh.edges[right_edge_id].verts[1].index
+            
+            if right_edge_vertex_0_id not in right_vertices:
+                right_vertices.append(right_edge_vertex_0_id)
+            
+            if right_edge_vertex_1_id not in right_vertices:
+                right_vertices.append(right_edge_vertex_1_id)
+            
+            if right_edges_index == 0:
+                first_right_vertex_id = right_edge_vertex_0_id
+            else:
+                if right_edge_vertex_0_id == first_right_vertex_id or right_edge_vertex_1_id == first_right_vertex_id:
+                    right_vertices_swap = True
+        
+        if right_vertices_swap:
+            first_right_vertex_index:int = right_vertices[0]
+            right_vertices[0] = right_vertices[1]
+            right_vertices[1] = first_right_vertex_index
+        
+        layer_map.beveled_median_vertices_to_last_edge[previous_unbeveled_edge_id] = [left_vertices, right_vertices]
+        
+        previous_unbeveled_vertex_small:int = previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[0].index
+        previous_unbeveled_vertex_large:int = previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[1].index
+        
+        if previous_unbeveled_vertex_small > previous_unbeveled_vertex_large:
+            previous_unbeveled_vert_tmp:int = previous_unbeveled_vertex_small
+            previous_unbeveled_vertex_small = previous_unbeveled_vertex_large
+            previous_unbeveled_vertex_large = previous_unbeveled_vert_tmp
+        
+        new_small_vertices:Array = left_vertices
+        new_large_vertices:Array = right_vertices
+        
+        new_small_vertices.sort()
+        new_large_vertices.sort()
+        
+        if new_small_vertices[0] < new_large_vertices[0]:
+            new_small_vertices = left_vertices
+            new_large_vertices = right_vertices
+        else:
+            new_small_vertices = right_vertices
+            new_large_vertices = left_vertices
+
+        previous_unbeveled_vertices:Array = [previous_unbeveled_vertex_small, previous_unbeveled_vertex_large]
+        previous_unbeveled_vertex_index:int = 0
+        
+        for previous_unbeveled_vertex in previous_unbeveled_vertices:
+            #If the vertex ID of this line[previous_unbeveled_edge_id] has not already been processed.
+            if previous_unbeveled_vertex not in processed_previous_vertices:
+                processed_previous_vertices.append(previous_unbeveled_vertex)
+                
+                vertex_face_group_index:int = 0
+                
+                #Looping through the GROUPED corners/terminator (as faces)
+                for vertex_face_group in new_bevel_terminator_and_corner_faces_grouped:
+                    #If this corner/terminator group has not already been processed/linked to a vertex on the previous mesh.
+                    if vertex_face_group_index not in processed_new_bevel_terminator_and_corner_faces_grouped:
+                        match_found:bool = False
+                        #Now lets loop through each of the individual faces within this corner/terminator group.
+                        for face_id in vertex_face_group:
+                            #Looping through every single vertex inside of this face.
+                            for face_vertex in new_blender_mesh.faces[face_id].verts:
+                                if (previous_unbeveled_vertex_index == 0 and face_vertex.index in new_small_vertices) or (previous_unbeveled_vertex_index == 1 and face_vertex.index in new_large_vertices):
+                                    match_found = True
+                                    break
+                            
+                            if match_found:
+                                break
+                        
+                        if match_found:
+                            processed_new_bevel_terminator_and_corner_faces_grouped.append(vertex_face_group_index)
+                            layer_map.beveled_faces_to_last_vertex[previous_unbeveled_vertex] = vertex_face_group
+                            
+                            vertex_face_group_edges:Array = get_edges_from_faces(new_blender_mesh, vertex_face_group)
+                            vertex_face_group_vertices:Array = get_vertices_from_edges(new_blender_mesh, vertex_face_group_edges)
+                            
+                            layer_map.beveled_edges_to_last_vertex[previous_unbeveled_vertex] = vertex_face_group_edges
+                            layer_map.beveled_vertices_to_last_vertex[previous_unbeveled_vertex] = vertex_face_group_vertices
+                    
+                    vertex_face_group_index += 1
+            
+            previous_unbeveled_vertex_index += 1
         
         processed_faces = processed_faces + faces_of_column
         index += 1

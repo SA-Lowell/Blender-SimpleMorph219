@@ -428,14 +428,41 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
     edge_map:dict = {}
     face_map:dict = {}
     
+    original_vertex_0_index:int = 0
+    original_vertex_1_index:int = 0
+    new_vertex_0_index:int = 0
+    new_vertex_1_index:int = 0
+    
     bounding_edges:Array = salowell_bpy_lib.get_bounding_edges_of_face_groups( new_mesh, new_faces )[3]
+    bounding_vertices:Array = []
+    
+    for bounding_edge_id in bounding_edges:
+        new_vertex_0_index = new_mesh.edges[bounding_edge_id].verts[0].index
+        new_vertex_1_index = new_mesh.edges[bounding_edge_id].verts[1].index
+        
+        if new_vertex_0_index not in bounding_vertices:
+            bounding_vertices.append(new_vertex_0_index)
+        
+        if new_vertex_1_index not in bounding_vertices:
+            bounding_vertices.append(new_vertex_1_index)
     
     seed:bool = True
     
     previous_mesh_beveled_edge_ids:Array = []
+    previous_mesh_beveled_vertex_ids:Array = []
     
     for previous_mesh_edge_id in new_layer_map.beveled_endstart_edges_to_last_edge:
          previous_mesh_beveled_edge_ids.append(previous_mesh_edge_id)
+    
+    for previous_mesh_beveled_edge_id in previous_mesh_beveled_edge_ids:
+        original_vertex_0_index = original_mesh.edges[previous_mesh_beveled_edge_id].verts[0].index
+        original_vertex_1_index = original_mesh.edges[previous_mesh_beveled_edge_id].verts[1].index
+        
+        if original_vertex_0_index not in previous_mesh_beveled_vertex_ids:
+            previous_mesh_beveled_vertex_ids.append(original_vertex_0_index)
+        
+        if original_vertex_1_index not in previous_mesh_beveled_vertex_ids:
+            previous_mesh_beveled_vertex_ids.append(original_vertex_1_index)
     
     for previous_mesh_edge in new_layer_map.beveled_endstart_edges_to_last_edge:
         original_mesh_faces = salowell_bpy_lib.get_faces_of_edge_bmesh( original_mesh, previous_mesh_edge )[1]
@@ -461,6 +488,17 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
                         edge_map[mapped[0]] = mapped[1]
+                        
+                        original_vertex_0_index = original_mesh.edges[mapped[0]].verts[0].index
+                        original_vertex_1_index = original_mesh.edges[mapped[0]].verts[1].index
+                        new_vertex_0_index = new_mesh.edges[mapped[1]].verts[0].index
+                        new_vertex_1_index = new_mesh.edges[mapped[1]].verts[1].index
+                        
+                        if original_vertex_0_index not in vertex_map and new_vertex_0_index not in bounding_vertices and original_vertex_0_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_0_index] = new_vertex_0_index
+                        
+                        if original_vertex_1_index not in vertex_map and new_vertex_1_index not in bounding_vertices and original_vertex_1_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_1_index] = new_vertex_1_index
     
     face_map_base:dict = face_map.copy()
     
@@ -526,6 +564,17 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
                         edge_map[mapped[0]] = mapped[1]
+                        
+                        original_vertex_0_index = original_mesh.edges[mapped[0]].verts[0].index
+                        original_vertex_1_index = original_mesh.edges[mapped[0]].verts[1].index
+                        new_vertex_0_index = new_mesh.edges[mapped[1]].verts[0].index
+                        new_vertex_1_index = new_mesh.edges[mapped[1]].verts[1].index
+                        
+                        if original_vertex_0_index not in vertex_map and new_vertex_0_index not in bounding_vertices and original_vertex_0_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_0_index] = new_vertex_0_index
+                        
+                        if original_vertex_1_index not in vertex_map and new_vertex_1_index not in bounding_vertices and original_vertex_1_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_1_index] = new_vertex_1_index
             else:
                 new_mesh_edge_ids =  [new_mesh_edge.index for new_mesh_edge in new_mesh.faces[new_face].edges]
                 
@@ -536,6 +585,17 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
                         edge_map[mapped[0]] = mapped[1]
+                        
+                        original_vertex_0_index = original_mesh.edges[mapped[0]].verts[0].index
+                        original_vertex_1_index = original_mesh.edges[mapped[0]].verts[1].index
+                        new_vertex_0_index = new_mesh.edges[mapped[1]].verts[0].index
+                        new_vertex_1_index = new_mesh.edges[mapped[1]].verts[1].index
+                        
+                        if original_vertex_0_index not in vertex_map and new_vertex_0_index not in bounding_vertices and original_vertex_0_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_0_index] = new_vertex_0_index
+                        
+                        if original_vertex_1_index not in vertex_map and new_vertex_1_index not in bounding_vertices and original_vertex_1_index not in previous_mesh_beveled_vertex_ids:
+                            vertex_map[original_vertex_1_index] = new_vertex_1_index
             
             if original_face not in face_map:
                 face_map[original_face] = new_face

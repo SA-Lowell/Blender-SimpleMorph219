@@ -13,6 +13,8 @@ import mathutils
 
 from . import salowell_bpy_lib, simplemorph219
 
+pie_menu_selection_data:Array = [0, 0, None]
+
 class realcorner219_procedural_edge_select_types( Enum ):
     EDGE = 0
     LEFT_EDGE = 1
@@ -49,32 +51,93 @@ class edge_select_pie_menu(Menu):
         return {'FINISHED'}
     
     def draw(self, context):
+        global pie_menu_selection_data
+        
+        layer_index:int = salowell_bpy_lib.get_selected_layer_index() - 1
+        layer_name:str = 'realCorner219_' + str(layer_index)
+        
         layout = self.layout
         pie = layout.menu_pie()
         
-        edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'EDGE', icon = 'EVENT_A')
-        edge.action = 'EDGE'
-        
-        edge_right = pie.operator('view3d.handle_dynamic_edge_select', text = 'Edge + Right', icon = 'EVENT_B')
-        edge_right.action = 'EDGE_RIGHT'
-        
-        left_edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Left + Edge', icon = 'EVENT_C')
-        left_edge.action = 'LEFT_EDGE'
-        
-        left_edge_right = pie.operator('view3d.handle_dynamic_edge_select', text = 'Left + Edge + Right', icon = 'EVENT_D')
-        left_edge_right.action = 'LEFT_EDGE_RIGHT'
-        
-        unused = pie.operator('view3d.handle_dynamic_edge_select', text = 'Deselect', icon = 'EVENT_E')
-        unused.action = 'EDGE'
-        
-        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_F')
-        unused.action = 'EDGE'
-        
-        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_G')
-        unused.action = 'EDGE'
-        
-        unused = pie.operator('view3d.handle_dynamic_edge_select', icon = 'EVENT_H')
-        unused.action = 'EDGE'
+        if pie_menu_selection_data[0] == 2:
+            #Edges are being selected
+            found:bool = False
+            
+            for previous_vertex_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_edges_to_last_vertex.items():
+                for current_edge_id in pie_menu_selection_data[2].layer_maps[layer_name].beveled_edges_to_last_vertex[previous_vertex_id]:
+                    if current_edge_id == pie_menu_selection_data[1]:
+                        edge_operator = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- Edge', icon = 'EVENT_A')
+                        edge_operator.action = 'BEVEL_-_LAST_VERTEX_-_EDGE'
+                        found = True
+                        break
+                
+                if found:
+                    break
+            
+            where_found:Array = []
+            left_edge_menu:bool = False
+            right_edge_menu:bool = False
+            
+            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge.items():
+                left_edges:Array = pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge[previous_edge_id][0]
+                right_edges:Array = pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge[previous_edge_id][1]
+                
+                if pie_menu_selection_data[1] in left_edges:
+                    where_found.append(previous_edge_id)
+                    left_edge_menu = True
+                
+                if pie_menu_selection_data[1] in right_edges:
+                    where_found.append(previous_edge_id)
+                    right_edge_menu = True
+            
+            if left_edge_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Left Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_LEFT_EDGE'
+            
+            if right_edge_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Right Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_RIGHT_EDGE'
+            
+            found = False
+            
+            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_parallel_edges_to_last_edge.items():
+                for current_edge_id in pie_menu_selection_data[2].layer_maps[layer_name].beveled_parallel_edges_to_last_edge[previous_edge_id]:
+                    if current_edge_id == pie_menu_selection_data[1]:
+                        edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Parallel Edge', icon = 'EVENT_A')
+                        edge.action = 'BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE'
+                        found = True
+                        break
+                
+                if found:
+                    break
+            
+            start_edge_menu:bool = False
+            end_edge_menu:bool = False
+            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge.items():
+                start_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge[previous_edge_id][0]
+                end_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge[previous_edge_id][1]
+                
+                if start_edge_id == pie_menu_selection_data[1]:
+                    start_edge_menu = True
+                
+                if end_edge_id == pie_menu_selection_data[1]:
+                    end_edge_menu = True
+            
+            if start_edge_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Start Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_START_EDGE'
+            
+            if end_edge_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- End Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_END_EDGE'
+            
+            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].unbeveled_edges.items():
+                current_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].unbeveled_edges[previous_edge_id]
+                
+                if current_edge_id == pie_menu_selection_data[1]:
+                    edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Current Edge', icon = 'EVENT_A')
+                    edge.action = 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE'
+                    break
 
 class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
     bl_idname = 'view3d.handle_dynamic_edge_select'
@@ -83,10 +146,12 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
     
     action: EnumProperty(
         items = [
-            ( "EDGE", "EDGE", "Select only the center part of the line" ),
-            ( "EDGE_RIGHT", "Add Layer", "Adds a new bevel layer to the mesh" ),
-            ( "LEFT_EDGE", "Mark As 219 Base", "Marks the current object as a base object for all Simple Morph operations." ),
-            ( "LEFT_EDGE_RIGHT", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" )
+            ( "BEVEL_-_LAST_VERTEX_-_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_LEFT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_RIGHT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_START_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_CURRENT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
         ]
     )
     
@@ -689,6 +754,7 @@ def create_if_not_exists_simple_morph_219_object(object_name) -> simple_morph_21
         s_m_219_obj = simple_morph_219_object(object_name)
         simple_morph_219_object_list.append(s_m_219_obj)
     
+    pie_menu_selection_data[2] = s_m_219_obj
     return s_m_219_obj
 
 #This returns the edge objects that the given dynamic_edges map to
@@ -1917,7 +1983,7 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
 
 @bpy.app.handlers.persistent
 def real_corner_219_handle_edge_select_mode_click( scene, depsgraph ):
-    global real_corner_219_handle_edge_select_mode_click_locked, realCorner219PropName
+    global real_corner_219_handle_edge_select_mode_click_locked, realCorner219PropName, pie_menu_selection_data
     
     if not real_corner_219_handle_edge_select_mode_click_locked and type( scene ) is bpy.types.Scene and scene.realCorner219Layers != realCorner219PropName + '0':
         real_corner_219_handle_edge_select_mode_click_locked = True
@@ -1943,10 +2009,29 @@ def real_corner_219_handle_edge_select_mode_click( scene, depsgraph ):
             blender_mesh.free()
             bpy.ops.object.mode_set( mode = 'EDIT')
             
-            for edge in bpy.context.active_object.data.edges:
-                if edge.select:
-                    bpy.ops.wm.call_menu_pie(name = 'edge_select_pie_menu')
-                    break
+            selection_type:tuple = bpy.context.tool_settings.mesh_select_mode[:]
+            
+            if selection_type[0]:
+                for vertex in bpy.context.active_object.data.vertices:
+                    if vertex.select:
+                        pie_menu_selection_data[0] = 1
+                        pie_menu_selection_data[1] = vertex.index
+                        bpy.ops.wm.call_menu_pie(name = 'edge_select_pie_menu')
+                        break
+            if selection_type[1]:
+                for edge in bpy.context.active_object.data.edges:
+                    if edge.select:
+                        pie_menu_selection_data[0] = 2
+                        pie_menu_selection_data[1] = edge.index
+                        bpy.ops.wm.call_menu_pie(name = 'edge_select_pie_menu')
+                        break
+            if selection_type[2]:   
+                for face in bpy.context.active_object.data.polygons:
+                    if face.select:
+                        pie_menu_selection_data[0] = 3
+                        pie_menu_selection_data[1] = face.index
+                        bpy.ops.wm.call_menu_pie(name = 'edge_select_pie_menu')
+                        break
             
             bpy.context.active_object.update_from_editmode()
         

@@ -739,6 +739,10 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
             left_edges.reverse()
             right_edges.reverse()
             faces_of_column.reverse()
+            
+            left_edges_tmp:Array = right_edges
+            right_edges = left_edges
+            left_edges = left_edges_tmp
         
         layer_map.beveled_faces_to_last_edge[previous_unbeveled_edge_id] = faces_of_column
         layer_map.beveled_parallel_edges_to_last_edge[previous_unbeveled_edge_id] = parallel_edges

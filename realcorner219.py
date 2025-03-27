@@ -102,7 +102,6 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
             edge_id = selected_edges[0]
         
         s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
-        
         layer_index:int = get_real_corner_custom_prop_key_index(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
         previous_previous_bmesh = gen_real_corner_meshes_from_index(bpy.data.objects[realCorner219SelectedBaseObjName], layer_index - 2)[0]
         previous_layer_key = get_previous_real_corner_custom_prop_key(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
@@ -689,7 +688,7 @@ def create_if_not_exists_simple_morph_219_object(object_name) -> simple_morph_21
     if s_m_219_obj is None:
         s_m_219_obj = simple_morph_219_object(object_name)
         simple_morph_219_object_list.append(s_m_219_obj)
-        
+    
     return s_m_219_obj
 
 #This returns the edge objects that the given dynamic_edges map to
@@ -1831,6 +1830,7 @@ def gen_real_corner_meshes_from_index( obj:object, index:int ) -> Array | Array 
     
 def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | Array | Array | Array | Array | Array:
     global simple_morph_219_object_list, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName
+    
     simple_morph_219_obj:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(obj.name)
     blender_mesh:bmesh.types.BMesh = salowell_bpy_lib.mesh_to_bmesh(obj.data)
     

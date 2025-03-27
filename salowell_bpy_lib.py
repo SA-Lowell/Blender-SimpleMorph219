@@ -46,6 +46,9 @@ class bevel_profile_type_items( Enum ):
     SUPERELLIPSE = 0
     CUSTOM = 1
 
+def get_selected_layer_index() -> int:
+    return realcorner219.get_real_corner_custom_prop_key_index(bpy.context.selected_objects[0], bpy.context.scene.realCorner219Layers)
+
 def unwrapObjectUV( objectToUnwrap ):
     isolate_object_select( objectToUnwrap )
     bpy.ops.object.mode_set( mode = 'EDIT' )

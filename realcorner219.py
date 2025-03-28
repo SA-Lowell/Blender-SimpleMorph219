@@ -241,6 +241,293 @@ class simple_morph_219_layer_map():
     unbeveled_edges:dict = {}#The unbeveled edges mapped back to their previous IDs
     unbeveled_faces:dict = {}#The unbeveled faces mapped back to their previous IDs
     
+    def get_bevel_vertex_relative_map(self, vertex_id:int = 0) -> dict:
+        """
+        Returns every instance where the input vertex_id found on blender_mesh maps back to previous_blender_mesh
+        
+        Parameters
+        ----------
+        vertex_id: int
+            The vertex index found within blender_mesh
+        
+        Returns
+        -------
+            A dictionary of vertex_id from blender_mesh relatively mapped back to previous_blender_mesh.
+            [
+                beveled_vertices_to_last_vertex:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last vertex key,
+                        1:
+                            index of vertex_id
+                    ],
+                beveled_leftright_vertices_to_last_edge:Array - Empty if not found, or an array of 2D arrays
+                    [
+                        0:
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                        ...
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                        n:
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                    ],
+                unbeveled_vertices:int
+                    -1 if not found, or greater than or equal to zero if found, of which this value represents the index of the last vertex key.
+            ]
+        """
+        relative_map:dict = {
+            'beveled_vertices_to_last_vertex': [],
+            'beveled_leftright_vertices_to_last_edge': [],
+            'unbeveled_vertices': -1,
+        }
+        
+        found:bool = False
+        keys:Array = list(self.beveled_vertices_to_last_vertex.keys())
+        
+        for previous_vertex_id, value in self.beveled_vertices_to_last_vertex.items():
+            for current_vertex_id in value:
+                if current_vertex_id == vertex_id:
+                    relative_map['beveled_vertices_to_last_vertex'] = [keys.index(previous_vertex_id), value.index(current_vertex_id)]
+                    found = True
+                    break
+            
+            if found:
+                break
+        
+        keys = list(self.beveled_leftright_vertices_to_last_edge.keys())
+        
+        for previous_edge_id, value in self.beveled_leftright_vertices_to_last_edge.items():
+            left_vertices:Array = self.beveled_leftright_vertices_to_last_edge[previous_edge_id][0]
+            right_vertices:Array = self.beveled_leftright_vertices_to_last_edge[previous_edge_id][1]
+            
+            if vertex_id in left_vertices:
+                relative_map['beveled_leftright_vertices_to_last_edge'].append([keys.index(previous_edge_id), 0])
+            
+            if vertex_id in right_vertices:
+                relative_map['beveled_leftright_vertices_to_last_edge'].append([keys.index(previous_edge_id), 1])
+        
+        keys = list(self.unbeveled_vertices.keys())
+        
+        for previous_vertex_id, value in self.unbeveled_vertices.items():
+            current_vertex_id:int = value
+            
+            if current_vertex_id == vertex_id:
+                relative_map['unbeveled_vertices'] = keys.index(previous_vertex_id)
+                break
+        
+        return relative_map
+    
+    def get_bevel_edge_relative_map(self, edge_id:int = 0) -> dict:
+        """
+        Returns every instance where the input edge_id found on blender_mesh maps back to previous_blender_mesh
+        
+        Parameters
+        ----------
+        edge_id: int
+            The edge index found within blender_mesh
+        
+        Returns
+        -------
+            A dictionary of edge_id from blender_mesh relatively mapped back to previous_blender_mesh.
+            [
+                beveled_edges_to_last_vertex:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last vertex key,
+                        1:
+                            index of edge_id
+                    ],
+                beveled_leftright_edges_to_last_edge:Array - Empty if not found, or an array of 2D arrays
+                    [
+                        0:
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                        ...
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                        n:
+                            [
+                                index of last edge key,
+                                0 if left, 1 if right
+                            ],
+                    ],
+                beveled_parallel_edges_to_last_edge:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last edge key,
+                        1:
+                            index of edge_id
+                    ],
+                beveled_startend_edges_to_last_edge:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last edge key,
+                        1:
+                            0 if start, 1 if end
+                    ],
+                unbeveled_edges:int
+                    -1 if not found, or greater than or equal to zero if found, of which this value represents the index of the last edge key.
+            ]
+        """
+        relative_map:dict = {
+            'beveled_edges_to_last_vertex': [],
+            'beveled_leftright_edges_to_last_edge': [],
+            'beveled_parallel_edges_to_last_edge': [],
+            'beveled_startend_edges_to_last_edge': [],
+            'unbeveled_edges': -1,
+        }
+        
+        found:bool = False
+        keys:Array = list(self.beveled_edges_to_last_vertex.keys())
+        
+        for previous_vertex_id, value in self.beveled_edges_to_last_vertex.items():
+            for current_edge_id in value:
+                if current_edge_id == edge_id:
+                    relative_map['beveled_edges_to_last_vertex'] = [keys.index(previous_vertex_id), value.index(current_edge_id)]
+                    found = True
+                    break
+            
+            if found:
+                break
+        
+        keys = list(self.beveled_leftright_edges_to_last_edge.keys())
+        
+        for previous_edge_id, value in self.beveled_leftright_edges_to_last_edge.items():
+            left_edges:Array = self.beveled_leftright_edges_to_last_edge[previous_edge_id][0]
+            right_edges:Array = self.beveled_leftright_edges_to_last_edge[previous_edge_id][1]
+            
+            if edge_id in left_edges:
+                relative_map['beveled_leftright_edges_to_last_edge'].append([keys.index(previous_edge_id), 0])
+            
+            if edge_id in right_edges:
+                relative_map['beveled_leftright_edges_to_last_edge'].append([keys.index(previous_edge_id), 1])
+        
+        found = False
+        keys = list(self.beveled_parallel_edges_to_last_edge.keys())
+        
+        for previous_edge_id, value in self.beveled_parallel_edges_to_last_edge.items():
+            for current_edge_id in value:
+                if current_edge_id == edge_id:
+                    relative_map['beveled_parallel_edges_to_last_edge'].append(keys.index(previous_edge_id))
+                    relative_map['beveled_parallel_edges_to_last_edge'].append(value.index(current_edge_id))
+                    
+                    found = True
+                    break
+            
+            if found:
+                break
+        
+        keys = list(self.beveled_startend_edges_to_last_edge.keys())
+        
+        for previous_edge_id, value in self.beveled_startend_edges_to_last_edge.items():
+            start_edge_id:int = value[0]
+            end_edge_id:int = value[1]
+            
+            if start_edge_id == edge_id:
+                relative_map['beveled_startend_edges_to_last_edge'] = [keys.index(previous_edge_id), 0]
+                break
+            
+            if end_edge_id == edge_id:
+                relative_map['beveled_startend_edges_to_last_edge'] = [keys.index(previous_edge_id), 1]
+                break
+        
+        keys = list(self.unbeveled_edges.keys())
+        for previous_edge_id, value in self.unbeveled_edges.items():
+            current_edge_id:int = value
+            
+            if current_edge_id == edge_id:
+                relative_map['unbeveled_edges'] = keys.index(previous_edge_id)
+                break
+        
+        return relative_map
+    
+    def get_bevel_face_relative_map(self, face_id:int = 0) -> dict:
+        """
+        Returns every instance where the input face_id found on blender_mesh maps back to previous_blender_mesh
+        
+        Parameters
+        ----------
+        face_id: int
+            The edge index found within blender_mesh
+        
+        Returns
+        -------
+            A dictionary of face_id from blender_mesh relatively mapped back to previous_blender_mesh.
+            [
+                beveled_faces_to_last_vertex:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last vertex key,
+                        1:
+                            index of face_id
+                    ],
+                beveled_faces_to_last_edge:Array - Empty if not found, or a 2D array
+                    [
+                        0:
+                            index of last edge key,
+                        1:
+                            index of face_id
+                    ],
+                unbeveled_faces:int
+                    -1 if not found, or greater than or equal to zero if found, of which this value represents the index of the last face key.
+            ]
+        """
+        relative_map:dict = {
+            'beveled_faces_to_last_vertex': [],
+            'beveled_faces_to_last_edge': [],
+            'unbeveled_faces': -1,
+        }
+        
+        found:bool = False
+        keys:Array = list(self.beveled_faces_to_last_vertex.keys())
+        
+        for previous_vertex_id, value in self.beveled_faces_to_last_vertex.items():
+            for current_face_id in value:
+                if current_face_id == face_id:
+                    relative_map['beveled_faces_to_last_vertex'] = [keys.index(previous_vertex_id), value.index(current_face_id)]
+                    found = True
+                    break
+            
+            if found:
+                break
+        
+        found = False
+        keys = list(self.beveled_faces_to_last_edge.keys())
+        
+        for previous_edge_id, value in self.beveled_faces_to_last_edge.items():
+            for current_face_id in value:
+                if current_face_id == face_id:
+                    relative_map['beveled_faces_to_last_edge'].append(keys.index(previous_edge_id))
+                    relative_map['beveled_faces_to_last_edge'].append(value.index(current_face_id))
+                    
+                    found = True
+                    break
+            
+            if found:
+                break
+        
+        keys = list(self.unbeveled_faces.keys())
+        for previous_face_id, value in self.unbeveled_faces.items():
+            current_face_id:int = value
+            
+            if current_face_id == face_id:
+                relative_map['unbeveled_faces'] = keys.index(previous_face_id)
+                break
+        
+        return relative_map
+    
     def set_bmesh( self, blender_mesh:bmesh.types.BMesh ):
         self.blender_mesh = blender_mesh.copy()
     

@@ -59,36 +59,50 @@ class edge_select_pie_menu(Menu):
         layout = self.layout
         pie = layout.menu_pie()
         
+        if pie_menu_selection_data[0] == 1:
+            vertex_relative_map:dict = pie_menu_selection_data[2].layer_maps[layer_name].get_bevel_vertex_relative_map(pie_menu_selection_data[1])
+            
+            if len(vertex_relative_map['beveled_vertices_to_last_vertex']) != 0:
+                edge_operator = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- Vertex', icon = 'EVENT_A')
+                edge_operator.action = 'BEVEL_-_LAST_VERTEX_-_VERTEX'
+            
+            left_vertex_menu:bool = False
+            right_vertex_menu:bool = False
+            if len(vertex_relative_map['beveled_leftright_vertices_to_last_edge']) != 0:
+                for beveled_leftright_vertices_to_last_edge in vertex_relative_map['beveled_leftright_vertices_to_last_edge']:
+                    
+                    if beveled_leftright_vertices_to_last_edge[1] == 0:
+                        left_vertex_menu = True
+                    else:
+                        right_vertex_menu = True
+            
+            if left_vertex_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Left Vertex', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_LEFT_VERTEX'
+            
+            if right_vertex_menu:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Right Vertex', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_RIGHT_VERTEX'
+            
+            if vertex_relative_map['unbeveled_vertices'] >= 0:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- Current Vertex', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_VERTEX_-_CURRENT_VERTEX'
         if pie_menu_selection_data[0] == 2:
-            #Edges are being selected
-            found:bool = False
+            edge_relative_map:dict = pie_menu_selection_data[2].layer_maps[layer_name].get_bevel_edge_relative_map(pie_menu_selection_data[1])
             
-            for previous_vertex_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_edges_to_last_vertex.items():
-                for current_edge_id in pie_menu_selection_data[2].layer_maps[layer_name].beveled_edges_to_last_vertex[previous_vertex_id]:
-                    if current_edge_id == pie_menu_selection_data[1]:
-                        edge_operator = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- Edge', icon = 'EVENT_A')
-                        edge_operator.action = 'BEVEL_-_LAST_VERTEX_-_EDGE'
-                        found = True
-                        break
-                
-                if found:
-                    break
+            if len(edge_relative_map['beveled_edges_to_last_vertex']) != 0:
+                edge_operator = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- Edge', icon = 'EVENT_A')
+                edge_operator.action = 'BEVEL_-_LAST_VERTEX_-_EDGE'
             
-            where_found:Array = []
             left_edge_menu:bool = False
             right_edge_menu:bool = False
-            
-            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge.items():
-                left_edges:Array = pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge[previous_edge_id][0]
-                right_edges:Array = pie_menu_selection_data[2].layer_maps[layer_name].beveled_median_edges_to_last_edge[previous_edge_id][1]
-                
-                if pie_menu_selection_data[1] in left_edges:
-                    where_found.append(previous_edge_id)
-                    left_edge_menu = True
-                
-                if pie_menu_selection_data[1] in right_edges:
-                    where_found.append(previous_edge_id)
-                    right_edge_menu = True
+            if len(edge_relative_map['beveled_leftright_edges_to_last_edge']) != 0:
+                for beveled_leftright_edges_to_last_edge in edge_relative_map['beveled_leftright_edges_to_last_edge']:
+                    
+                    if beveled_leftright_edges_to_last_edge[1] == 0:
+                        left_edge_menu = True
+                    else:
+                        right_edge_menu = True
             
             if left_edge_menu:
                 edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Left Edge', icon = 'EVENT_A')
@@ -98,31 +112,18 @@ class edge_select_pie_menu(Menu):
                 edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Right Edge', icon = 'EVENT_A')
                 edge.action = 'BEVEL_-_LAST_EDGE_-_RIGHT_EDGE'
             
-            found = False
-            
-            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_parallel_edges_to_last_edge.items():
-                for current_edge_id in pie_menu_selection_data[2].layer_maps[layer_name].beveled_parallel_edges_to_last_edge[previous_edge_id]:
-                    if current_edge_id == pie_menu_selection_data[1]:
-                        edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Parallel Edge', icon = 'EVENT_A')
-                        edge.action = 'BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE'
-                        found = True
-                        break
-                
-                if found:
-                    break
+            if len(edge_relative_map['beveled_parallel_edges_to_last_edge']) != 0:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Parallel Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE'
             
             start_edge_menu:bool = False
             end_edge_menu:bool = False
-            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge.items():
-                start_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge[previous_edge_id][0]
-                end_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].beveled_endstart_edges_to_last_edge[previous_edge_id][1]
-                
-                if start_edge_id == pie_menu_selection_data[1]:
-                    start_edge_menu = True
-                
-                if end_edge_id == pie_menu_selection_data[1]:
-                    end_edge_menu = True
-            
+            if len(edge_relative_map['beveled_startend_edges_to_last_edge']) != 0:
+                for beveled_startend_edges_to_last_edge in edge_relative_map['beveled_startend_edges_to_last_edge']:
+                    if edge_relative_map['beveled_startend_edges_to_last_edge'][1] == 0:
+                        start_edge_menu = True
+                    else:
+                        end_edge_menu = True
             if start_edge_menu:
                 edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Start Edge', icon = 'EVENT_A')
                 edge.action = 'BEVEL_-_LAST_EDGE_-_START_EDGE'
@@ -131,13 +132,23 @@ class edge_select_pie_menu(Menu):
                 edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- End Edge', icon = 'EVENT_A')
                 edge.action = 'BEVEL_-_LAST_EDGE_-_END_EDGE'
             
-            for previous_edge_id, value in pie_menu_selection_data[2].layer_maps[layer_name].unbeveled_edges.items():
-                current_edge_id:int = pie_menu_selection_data[2].layer_maps[layer_name].unbeveled_edges[previous_edge_id]
-                
-                if current_edge_id == pie_menu_selection_data[1]:
-                    edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Current Edge', icon = 'EVENT_A')
-                    edge.action = 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE'
-                    break
+            if edge_relative_map['unbeveled_edges'] >= 0:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- Current Edge', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE'
+        if pie_menu_selection_data[0] == 3:
+            face_relative_map:dict = pie_menu_selection_data[2].layer_maps[layer_name].get_bevel_face_relative_map(pie_menu_selection_data[1])
+             
+            if len(face_relative_map['beveled_faces_to_last_vertex']) != 0:
+                edge_operator = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Vertex <- FACE', icon = 'EVENT_A')
+                edge_operator.action = 'BEVEL_-_LAST_VERTEX_-_FACE'
+
+            if len(face_relative_map['beveled_faces_to_last_edge']) != 0:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last Edge <- FACES', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_EDGE_-_FACES'
+            
+            if face_relative_map['unbeveled_faces'] >= 0:
+                edge = pie.operator('view3d.handle_dynamic_edge_select', text = 'Bevel: Last FACE <- Current FACE', icon = 'EVENT_A')
+                edge.action = 'BEVEL_-_LAST_FACE_-_CURRENT_FACE'
 
 class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
     bl_idname = 'view3d.handle_dynamic_edge_select'
@@ -146,12 +157,20 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
     
     action: EnumProperty(
         items = [
+            ( "BEVEL_-_LAST_VERTEX_-_VERTEX", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_LEFT_VERTEX", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_RIGHT_VERTEX", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_VERTEX_-_CURRENT_VERTEX", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_VERTEX_-_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_EDGE_-_LEFT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_EDGE_-_RIGHT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_EDGE_-_START_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_END_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
             ( "BEVEL_-_LAST_EDGE_-_CURRENT_EDGE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_VERTEX_-_FACE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_EDGE_-_FACES", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "BEVEL_-_LAST_FACE_-_CURRENT_FACE", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
         ]
     )
     

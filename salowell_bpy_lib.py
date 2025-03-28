@@ -614,8 +614,8 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
     for previous_unbeveled_edge_id in previous_unbeveled_edge_ids_pathed:
         layer_map.beveled_faces_to_last_edge[previous_unbeveled_edge_id] = []
         layer_map.beveled_parallel_edges_to_last_edge[previous_unbeveled_edge_id] = []
-        layer_map.beveled_endstart_edges_to_last_edge[previous_unbeveled_edge_id] = []
-        layer_map.beveled_median_edges_to_last_edge[previous_unbeveled_edge_id] = [[],[]]
+        layer_map.beveled_startend_edges_to_last_edge[previous_unbeveled_edge_id] = []
+        layer_map.beveled_leftright_edges_to_last_edge[previous_unbeveled_edge_id] = [[],[]]
     
     start_edge_id:int = 0
     end_edge_id:int = 0
@@ -749,8 +749,8 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
         
         layer_map.beveled_faces_to_last_edge[previous_unbeveled_edge_id] = faces_of_column
         layer_map.beveled_parallel_edges_to_last_edge[previous_unbeveled_edge_id] = parallel_edges
-        layer_map.beveled_endstart_edges_to_last_edge[previous_unbeveled_edge_id] = [parallel_edges[0], parallel_edges[-1]]
-        layer_map.beveled_median_edges_to_last_edge[previous_unbeveled_edge_id] = [left_edges, right_edges]
+        layer_map.beveled_startend_edges_to_last_edge[previous_unbeveled_edge_id] = [parallel_edges[0], parallel_edges[-1]]
+        layer_map.beveled_leftright_edges_to_last_edge[previous_unbeveled_edge_id] = [left_edges, right_edges]
         
         left_vertices:Array = []
         right_vertices:Array = []
@@ -807,7 +807,7 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
             right_vertices[0] = right_vertices[1]
             right_vertices[1] = first_right_vertex_index
         
-        layer_map.beveled_median_vertices_to_last_edge[previous_unbeveled_edge_id] = [left_vertices, right_vertices]
+        layer_map.beveled_leftright_vertices_to_last_edge[previous_unbeveled_edge_id] = [left_vertices, right_vertices]
         
         previous_unbeveled_vertex_small:int = previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[0].index
         previous_unbeveled_vertex_large:int = previous_blender_mesh.edges[previous_unbeveled_edge_id].verts[1].index

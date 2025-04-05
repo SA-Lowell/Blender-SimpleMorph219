@@ -260,6 +260,13 @@ class simple_morph_219_layer_map():
     unbeveled_edges:dict = {}#The unbeveled edges mapped back to their previous IDs
     unbeveled_faces:dict = {}#The unbeveled faces mapped back to their previous IDs
     
+    def edge_is_startend_edge(self, edge_id) -> bool:
+        for previous_edge_id in self.beveled_startend_edges_to_last_edge:
+            if edge_id in self.beveled_startend_edges_to_last_edge[previous_edge_id]:
+                return True
+        
+        return False
+    
     def get_bevel_vertex_relative_map(self, vertex_id:int = 0) -> dict:
         """
         Returns every instance where the input vertex_id found on blender_mesh maps back to previous_blender_mesh
@@ -805,8 +812,12 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
     
     bounding_edges:Array = salowell_bpy_lib.get_bounding_edges_of_face_groups( new_mesh, new_faces )[3]
     bounding_vertices:Array = []
+    new_edges_to_ignore:Array = []
     
     for bounding_edge_id in bounding_edges:
+        if not new_layer_map.edge_is_startend_edge(bounding_edge_id):
+            new_edges_to_ignore.append(bounding_edge_id)
+            
         new_vertex_0_index = new_mesh.edges[bounding_edge_id].verts[0].index
         new_vertex_1_index = new_mesh.edges[bounding_edge_id].verts[1].index
         
@@ -853,7 +864,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if seed:
                 seed = False
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, paired_index[1], paired_index[0], new_layer_map, new_edges_to_ignore, [])
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -929,7 +940,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 for edge in new_mesh.faces[new_face].edges:
                     new_edge_array.append(edge.index)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, new_edges_to_ignore, [])
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -950,7 +961,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
                 
                 closest_edge_id = get_closest_edge(original_mesh, new_mesh, original_mesh.faces[original_face].edges[0].index, new_mesh_edge_ids)
                 
-                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
+                mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, new_edges_to_ignore, [])
                 
                 for mapped in mapped_face_edges:
                     if mapped[1] not in bounding_edges and mapped[0] not in new_layer_map.previous_selected_edges:
@@ -970,7 +981,7 @@ def map_beveled_mesh_to_previous_layer( original_mesh:bmesh, new_mesh:bmesh, new
             if original_face not in face_map:
                 face_map[original_face] = new_face
             
-            mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, bounding_edges, previous_mesh_beveled_edge_ids)
+            mapped_face_edges = map_face_edges(original_mesh, new_mesh, original_face, new_face, new_layer_map, new_edges_to_ignore, [])
             
             for mapped_face_edge in mapped_face_edges:
                 if mapped_face_edge[1] not in bounding_edges and mapped_face_edge[0] not in new_layer_map.previous_selected_edges:

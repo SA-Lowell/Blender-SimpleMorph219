@@ -206,7 +206,7 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
             layer_properties['edge_references'].append(selection_value)
         layer_properties['edges'] = []
         
-        real_corner_prop_string:str = realCornerPropDictToString( layer_properties )
+        real_corner_prop_string:str = realCornerPropDictToStringBevel( layer_properties )
         bpy.data.objects[realCorner219SelectedBaseObjName][ context.scene.realCorner219Layers ] = real_corner_prop_string
         bpy.data.objects[realCorner219ModifiedObjName][ context.scene.realCorner219Layers ] = real_corner_prop_string
           
@@ -1246,7 +1246,7 @@ def update_real_corner_bevel_values( op, context ):
     realCorner219LastUpdate = [
         op.originalObjectName,
         op.real_corner_layer_name,
-        realCornerPropDictToString( realCornerPropDict )
+        realCornerPropDictToStringBevel( realCornerPropDict )
     ]
     
     return None
@@ -1275,7 +1275,7 @@ def createRealCornerCustomPropKeyIfNoneExists( obj ):
     keyArray = get_all_real_corner_custom_prop_keys( obj )
     
     if len( keyArray ) == 0:
-        keyArray.append( createNewRealCornerCustomProperty( obj, realCorner219PropName ) )
+        keyArray.append( createNewBevelCustomProperty( obj, realCorner219PropName ) )
     
     return keyArray
 
@@ -1333,7 +1333,7 @@ def normalizeRealCornerCustomPropertyNames( obj ):
         obj[ realCorner219PropName + str( index ) ] = value
         index += 1
 
-def createNewRealCornerCustomProperty( obj, keyName ):
+def createNewBevelCustomProperty( obj, keyName ):
     normalizeRealCornerCustomPropertyNames( obj )
     suffix = 0
     keyNameWithSuffix = keyName + str( suffix )
@@ -1346,7 +1346,7 @@ def createNewRealCornerCustomProperty( obj, keyName ):
         
         keyNameWithSuffix = keyName + str( suffix )
     
-    obj[ keyNameWithSuffix ] = realCornerPropDictToString( createEmptyRealCornerPropDict() )
+    obj[ keyNameWithSuffix ] = realCornerPropDictToStringBevel( createEmptyRealCornerPropDict() )
     
     return keyNameWithSuffix
 
@@ -1585,7 +1585,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
                 else:
                     realCornerPropDict[ 'edges' ] = []
                 
-                originalObject[ context.scene.realCorner219Layers ] = realCornerPropDictToString( realCornerPropDict )
+                originalObject[ context.scene.realCorner219Layers ] = realCornerPropDictToStringBevel( realCornerPropDict )
             
             if modifiedObject is not None:
                 salowell_bpy_lib.isolate_object_select( modifiedObject )
@@ -1872,7 +1872,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
         selectedObject = selectedObject[0]
         
         if self.action == 'ADD_LAYER':
-            createNewRealCornerCustomProperty( bpy.data.objects[ self.originalObjectName ], realCorner219PropName )
+            createNewBevelCustomProperty( bpy.data.objects[ self.originalObjectName ], realCorner219PropName )
             return { 'CANCELLED' }
         elif self.action == 'MARK_AS_219_BASE':
             simplemorph219.markObjectAsSimpleMorphBaseObject( bpy.data.objects[ self.originalObjectName ] )
@@ -2009,7 +2009,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         bevelLayers = get_all_real_corner_custom_prop_keys( context.selected_objects[0] )
 
         if len( bevelLayers ) == 0:
-            keyName = createNewRealCornerCustomProperty( context.selected_objects[0], realCorner219PropName )
+            keyName = createNewBevelCustomProperty( context.selected_objects[0], realCorner219PropName )
             bevelLayers.append( keyName )
         
         bevelSegments=3
@@ -2083,7 +2083,7 @@ def createEmptyRealCornerPropDict() -> dict:
     
     return realCornerPropDict
 
-def realCornerPropDictToString( realCornerPropDict:dict ) -> str:
+def realCornerPropDictToStringBevel( realCornerPropDict:dict ) -> str:
     affect:str = str( realCornerPropDict[ 'bevel_settings' ][ 'affect' ] )
     offset_type:str = str( realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ] )
     offset:str = str( realCornerPropDict[ 'bevel_settings' ][ 'offset' ] )

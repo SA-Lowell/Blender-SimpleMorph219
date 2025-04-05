@@ -1456,8 +1456,8 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         items = [
             ( "TEST_QUICK", "Test Quick", "Test Quick" ),
             ( "APPLY_REAL_CORNER_CHANGES", "Apply Real Corner Changes", "This is used to apply any recent real corner changes that were made" ),
-            ( "TURN_ON_EDGE_SELECT", "Turn On Real Corner 219 Edge Select", "Turns on the Real Corner 219 Edge Select mode."),
-            ( "TURN_OFF_AND_SAVE_EDGE_SELECT", "Turn Off Real Corner 219 Edge Select and save", "Turns off the Real Corner 219 Edge Select mode and saves the currently selected edges."),
+            ( "TURN_ON_SELECT_MODE", "Turn On Real Corner 219 Edge Select", "Turns on the Real Corner 219 Edge Select mode."),
+            ( "TURN_OFF_AND_SAVE_SELECT_MODE", "Turn Off Real Corner 219 Edge Select and save", "Turns off the Real Corner 219 Edge Select mode and saves the currently selected edges."),
         ]
     )
     
@@ -1525,7 +1525,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
             return { 'FINISHED' }
         if self.action == 'APPLY_REAL_CORNER_CHANGES':
             pass
-        elif self.action == 'TURN_ON_EDGE_SELECT':
+        elif self.action == 'TURN_ON_SELECT_MODE':
             realcorner219HandleSelectDeselectFunctionLocked = True
             selectedObject = context.selected_objects
             
@@ -1561,7 +1561,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
             bpy.data.objects[realCorner219ModifiedObjName].update_from_editmode()
             bpy.ops.object.mode_set( mode = 'EDIT')
             realcorner219HandleSelectDeselectFunctionLocked = False
-        elif self.action == 'TURN_OFF_AND_SAVE_EDGE_SELECT':
+        elif self.action == 'TURN_OFF_AND_SAVE_SELECT_MODE':
             realcorner219HandleSelectDeselectFunctionLocked = True
             originalObject = None
             modifiedObject = None
@@ -1619,7 +1619,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
     action: EnumProperty(
         items = [
             ( "DO_NOTHING", "Do Nothing", "Does absolutely nothing" ),
-            ( "ADD_LAYER", "Add Layer", "Adds a new bevel layer to the mesh" ),
+            ( "ADD_BEVEL_LAYER", "Add Bevel Layer", "Adds a new bevel layer to the mesh" ),
             ( "MARK_AS_219_BASE", "Mark As 219 Base", "Marks the current object as a base object for all Simple Morph operations." ),
             ( "UPDATE_LAYER", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" )
         ]
@@ -1871,7 +1871,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
         
         selectedObject = selectedObject[0]
         
-        if self.action == 'ADD_LAYER':
+        if self.action == 'ADD_BEVEL_LAYER':
             createNewBevelCustomProperty( bpy.data.objects[ self.originalObjectName ], realCorner219PropName )
             return { 'CANCELLED' }
         elif self.action == 'MARK_AS_219_BASE':
@@ -1965,18 +1965,18 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         
         if simplemorph219.isSimpleMorphBaseObject( selectedObject ):
             createLayerBtn = layout.column()
-            createLayerObj = createLayerBtn.operator( 'simplemorph.219_real_corner_operations_op', text = 'Add Layer' )
-            createLayerObj.action = 'ADD_LAYER'
-            createLayerObj.originalObjectName = selectedObject.name
+            createBevelLayerObj = createLayerBtn.operator( 'simplemorph.219_real_corner_operations_op', text = 'Add Bevel Layer' )
+            createBevelLayerObj.action = 'ADD_BEVEL_LAYER'
+            createBevelLayerObj.originalObjectName = selectedObject.name
         
         if simplemorph219.isSimpleMorphBaseObject( selectedObject ) and selectedObject is not None and realCorner219CurrentState == realCorner219States.NONE:
             turnOnEditModeBtn = layout.column()
-            turnOnEditModeObj = turnOnEditModeBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Turn On Edge Select Mode' )
-            turnOnEditModeObj.action = 'TURN_ON_EDGE_SELECT'
+            turnOnEditModeObj = turnOnEditModeBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Turn On Select Mode' )
+            turnOnEditModeObj.action = 'TURN_ON_SELECT_MODE'
         elif ( simplemorph219.isSimpleMorphBaseObject( selectedObject ) or simplemorph219.isSimpleMorphTempBaseObject( selectedObject ) ) and selectedObject is not None and realCorner219CurrentState == realCorner219States.SELECTING_EDGE:
             turnOffEditModeBtn = layout.column()
-            turnOffEditModeObj = turnOffEditModeBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Save and Turn Off Edge Select Mode' )
-            turnOffEditModeObj.action = 'TURN_OFF_AND_SAVE_EDGE_SELECT'
+            turnOffEditModeObj = turnOffEditModeBtn.operator( 'realcorner219.real_corner_quickops_op', text = 'Save and Turn Off Select Mode' )
+            turnOffEditModeObj.action = 'TURN_OFF_AND_SAVE_SELECT_MODE'
         
         if not simplemorph219.isSimpleMorphBaseObject( selectedObject ) and selectedObject is not None:
             markAsBaseBtn = layout.column()

@@ -694,6 +694,7 @@ def map_face_edges(original_mesh:bmesh, new_mesh:bmesh, original_face_id:int, ne
     
     for edge_id in new_face_edge_ids_tmp:
         ignore:bool = False
+        
         for leftright_edge_group_id in layer_map.beveled_leftright_edges_to_last_edge:
             if edge_id in layer_map.beveled_leftright_edges_to_last_edge[leftright_edge_group_id][0] or edge_id in layer_map.beveled_leftright_edges_to_last_edge[leftright_edge_group_id][1] or edge_id in new_edges_to_ignore:
                 ignore = True
@@ -2295,7 +2296,9 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
             simple_morph_219_obj.set_layer(realCornerPropKeys[ propKey ], layer_map )
             
             simple_morph_219_obj
+        
         previous_blender_mesh = new_blender_mesh.copy()
+    
     return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
 
 @bpy.app.handlers.persistent

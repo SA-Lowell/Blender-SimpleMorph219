@@ -1037,9 +1037,6 @@ def startSetDeform( context ):
     setDeform( bone = bone )
 
 def markObjectAsSimpleMorphBaseObject( obj ):
-    if len( realcorner219.get_all_real_corner_custom_prop_keys( obj ) ) == 0:
-        realcorner219.createNewRealCornerCustomProperty( obj, realcorner219.realCorner219PropName )
-    
     obj[ simpleMorph219BaseName ] = True
     
     realcorner219.create_if_not_exists_simple_morph_219_object(obj.name) 

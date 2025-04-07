@@ -1276,7 +1276,7 @@ def createRealCornerCustomPropKeyIfNoneExists( obj ):
     keyArray = get_all_real_corner_custom_prop_keys( obj )
     
     if len( keyArray ) == 0:
-        keyArray.append( createNewBevelCustomProperty( obj, realCorner219PropName ) )
+        keyArray.append(createNewCustomProperty(obj, realCorner219PropName, 'bevel'))
     
     return keyArray
 
@@ -1334,7 +1334,8 @@ def normalizeRealCornerCustomPropertyNames( obj ):
         obj[ realCorner219PropName + str( index ) ] = value
         index += 1
 
-def createNewBevelCustomProperty( obj, keyName ):
+def createNewCustomProperty(obj:object, keyName:str, type:str):
+    type = type.lower()
     normalizeRealCornerCustomPropertyNames( obj )
     suffix = 0
     keyNameWithSuffix = keyName + str( suffix )
@@ -1347,7 +1348,12 @@ def createNewBevelCustomProperty( obj, keyName ):
         
         keyNameWithSuffix = keyName + str( suffix )
     
-    obj[ keyNameWithSuffix ] = realCornerPropDictToStringBevel( createEmptyRealCornerPropDict() )
+    propDictionary:dict = {}
+    
+    if type == 'bevel':
+        propDictionary = realCornerPropDictToStringBevel(createEmptyRealCornerPropDict('bevel'))
+    
+    obj[keyNameWithSuffix] = propDictionary
     
     return keyNameWithSuffix
 
@@ -1873,7 +1879,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
         selectedObject = selectedObject[0]
         
         if self.action == 'ADD_BEVEL_LAYER':
-            createNewBevelCustomProperty( bpy.data.objects[ self.originalObjectName ], realCorner219PropName )
+            createNewCustomProperty(bpy.data.objects[ self.originalObjectName ], realCorner219PropName, 'bevel')
             return { 'CANCELLED' }
         elif self.action == 'MARK_AS_219_BASE':
             simplemorph219.markObjectAsSimpleMorphBaseObject( bpy.data.objects[ self.originalObjectName ] )
@@ -2010,7 +2016,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         bevelLayers = get_all_real_corner_custom_prop_keys( context.selected_objects[0] )
 
         if len( bevelLayers ) == 0:
-            keyName = createNewBevelCustomProperty( context.selected_objects[0], realCorner219PropName )
+            keyName = createNewCustomProperty(context.selected_objects[0], realCorner219PropName, 'bevel')
             bevelLayers.append( keyName )
         
         bevelSegments=3

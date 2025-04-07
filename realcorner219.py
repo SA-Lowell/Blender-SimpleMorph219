@@ -1262,7 +1262,13 @@ def update_real_corner_selection_list( scene, context ):
         
         for realCornerKey in realCornerKeys:
             realCornerKeyLayerStr = str( realCornerKeyLayer )
-            items.append( ( realCornerKey, 'Layer ' + realCornerKeyLayerStr, 'Editing Real Corner layer ' + realCornerKeyLayerStr ) )
+            
+            operationType:str = ''
+            
+            if selectedObject[ realCorner219PropName + realCornerKeyLayerStr ].strip().startswith('219:0'):
+                operationType = 'Bevel'
+            
+            items.append( ( realCornerKey, 'Layer ' + realCornerKeyLayerStr + ' - ' + operationType, 'Editing Real Corner layer ' + realCornerKeyLayerStr ) )
             realCornerKeyLayer += 1
     
     return items
@@ -1280,7 +1286,7 @@ def get_real_corner_custom_prop_key_index( obj, propKey):
     found:bool = False
     
     for key, value in obj.items():
-        if type( value ) is str and value.startswith( '219:(' ):
+        if type( value ) is str and value.startswith( '219:' ):
             if key == propKey:
                 found = True
                 break
@@ -1305,7 +1311,7 @@ def get_all_real_corner_custom_prop_keys( obj ):
     realCornerKeys = []
     
     for key, value in obj.items():
-        if type( value ) is str and value.startswith( '219:(' ) and key.startswith( realCorner219PropName ) :
+        if type( value ) is str and value.startswith( '219:' ) and key.startswith( realCorner219PropName ) :
             realCornerKeys.append( key )
     
     return realCornerKeys
@@ -2109,7 +2115,7 @@ def realCornerPropDictToStringBevel( realCornerPropDict:dict ) -> str:
     face_strength_mode:str = str( realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ] )
     profile_type:str = str( realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ] )
     
-    realCornerPropString:str = '219:(' + ','.join( str( edgeId ) for edgeId in realCornerPropDict[ 'edges' ] ) + ')'
+    realCornerPropString:str = '219:0(' + ','.join( str( edgeId ) for edgeId in realCornerPropDict[ 'edges' ] ) + ')'
     realCornerPropString = realCornerPropString + '(' + affect + ',' + offset_type + ',' + offset + ',' + offset_pct + ',' + segments + ',' + profile + ',' + material + ',' + harden_normals + ',' + clamp_overlap + ',' + loop_slide + ',' + mark_seam + ',' + mark_sharp + ',' + miter_outer + ',' + miter_inner + ',' + spread + ',' + vmesh_method + ',' + face_strength_mode + ',' + profile_type + ')'
     
     realCornerPropString = realCornerPropString + '(' + ','.join( str( edge_reference[0] ) + ':' + str( edge_reference[1] ) + ':' + str( edge_reference[2] ) + ':' + str( edge_reference[3] ) for edge_reference in realCornerPropDict[ 'edge_references' ] ) + ')'
@@ -2117,12 +2123,13 @@ def realCornerPropDictToStringBevel( realCornerPropDict:dict ) -> str:
     return realCornerPropString
 
 def realCornerPropIndexToDict( obj:object, propKey:str ) -> dict:
-    return realCornerBevelPropStringToDict(obj[propKey])
+    if obj[propKey].strip().startswith('219:0'):
+        return realCornerBevelPropStringToDict(obj[propKey])
 
 def realCornerBevelPropStringToDict( realCornerPropString:str ) -> str:
     realCornerPropDict = createEmptyRealCornerPropDict('bevel')
     
-    propertyValues = realCornerPropString.strip().lstrip( '219:' ).lstrip( '(' ).rstrip( ')' ).split( ')(' )
+    propertyValues = realCornerPropString.strip().lstrip( '219:0' ).lstrip( '(' ).rstrip( ')' ).split( ')(' )
     
     for index, value in enumerate( propertyValues ):
         split = value.split( ',' )

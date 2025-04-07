@@ -186,12 +186,7 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
             edge_id = selected_edges[0]
         
         s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
-        layer_index:int = get_real_corner_custom_prop_key_index(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
-        previous_previous_bmesh = gen_real_corner_meshes_from_index(bpy.data.objects[realCorner219SelectedBaseObjName], layer_index - 2)[0]
         previous_layer_key = get_previous_real_corner_custom_prop_key(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
-        real_corner_property = realCornerPropIndexToDict(bpy.context.selected_objects[0], previous_layer_key)
-        
-        previous_bmesh, selected_face_objects, previous_selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices = gen_real_corner_meshes( bpy.data.objects[realCorner219SelectedBaseObjName], previous_layer_key )
         
         selection_value = edge_to_edge_reference(edge_id, s_m_219_object, previous_layer_key )
         

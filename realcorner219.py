@@ -1215,7 +1215,7 @@ def update_real_corner_bevel_values( op, context ):
     if realCorner219CurrentState == realCorner219States.UPDATING_LAYER and op.placeholderObjectName != '':
         objectNameToQueryPropertiesFrom = op.placeholderObjectName
     
-    realCornerPropDict = realCornerPropStringToDict( bpy.data.objects[ objectNameToQueryPropertiesFrom ][ op.real_corner_layer_name ] )
+    realCornerPropDict = realCornerBevelPropStringToDict( bpy.data.objects[ objectNameToQueryPropertiesFrom ][ op.real_corner_layer_name ] )
     
     if realCorner219CurrentState != realCorner219States.UPDATING_LAYER:
         realCornerPropDict[ 'edges' ] = selectedEdgesToCustomPropArray( bpy.data.objects[ op.originalObjectName ] )
@@ -2054,34 +2054,38 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
 def selectedEdgesToCustomPropArray( obj ):
     return salowell_bpy_lib.get_selected_edges( obj )[1]
 
-def createEmptyRealCornerPropDict() -> dict:
+def createEmptyRealCornerPropDict(propertyType:str) -> dict:
+    propertyType = propertyType.lower()
     realCornerPropDict:dict = {}
+    realCornerPropDict['vertices'] = []
     realCornerPropDict[ 'edges' ] = []
+    realCornerPropDict['faces'] = []
     
     #[0] = The type of dynamic edge [0 = Unbeveled, 1 = beveled start, 2 = beveled end, 3 = beveled parallel, 4 = beveled left, 5 = beveled right]
     #[1] = The index within the object type[beveled_faces_to_last_edge, beveled_startend_edges_to_last_edge, etc...] this selection is.
     #[2] = Only used for certain object types such as parallel edges (These edges will change in number depending on LOD, thus, this value represents a percentage of  which edge within the parallel edges this selection belongs to)
     #[3] = Which layer map this points back to. Sometimes you may select a leftright edge that was created several layers ago and the object needs a way to know how far back the selection is mapped.
-    realCornerPropDict[ 'edge_references' ] = []
-    realCornerPropDict[ 'bevel_settings' ] = {}
-    realCornerPropDict[ 'bevel_settings' ][ 'affect' ]:int = 1
-    realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'offset' ]:float = 0.0
-    realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ]:float = 0.0
-    realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
-    realCornerPropDict[ 'bevel_settings' ][ 'profile' ]:float = 0.5
-    realCornerPropDict[ 'bevel_settings' ][ 'material' ]:int = -1
-    realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ]:bool = False
-    realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ]:bool = False
-    realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ]:bool = True
-    realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ]:bool = False
-    realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ]:bool = False
-    realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'spread' ]:float = 0.1
-    realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ]:int = 0
-    realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ]:int = 0
+    if propertyType == 'bevel':
+        realCornerPropDict[ 'edge_references' ] = []
+        realCornerPropDict[ 'bevel_settings' ] = {}
+        realCornerPropDict[ 'bevel_settings' ][ 'affect' ]:int = 1
+        realCornerPropDict[ 'bevel_settings' ][ 'offset_type' ]:int = 0
+        realCornerPropDict[ 'bevel_settings' ][ 'offset' ]:float = 0.0
+        realCornerPropDict[ 'bevel_settings' ][ 'offset_pct' ]:float = 0.0
+        realCornerPropDict[ 'bevel_settings' ][ 'segments' ]:int = 1
+        realCornerPropDict[ 'bevel_settings' ][ 'profile' ]:float = 0.5
+        realCornerPropDict[ 'bevel_settings' ][ 'material' ]:int = -1
+        realCornerPropDict[ 'bevel_settings' ][ 'harden_normals' ]:bool = False
+        realCornerPropDict[ 'bevel_settings' ][ 'clamp_overlap' ]:bool = False
+        realCornerPropDict[ 'bevel_settings' ][ 'loop_slide' ]:bool = True
+        realCornerPropDict[ 'bevel_settings' ][ 'mark_seam' ]:bool = False
+        realCornerPropDict[ 'bevel_settings' ][ 'mark_sharp' ]:bool = False
+        realCornerPropDict[ 'bevel_settings' ][ 'miter_outer' ]:int = 0
+        realCornerPropDict[ 'bevel_settings' ][ 'miter_inner' ]:int = 0
+        realCornerPropDict[ 'bevel_settings' ][ 'spread' ]:float = 0.1
+        realCornerPropDict[ 'bevel_settings' ][ 'vmesh_method' ]:int = 0
+        realCornerPropDict[ 'bevel_settings' ][ 'face_strength_mode' ]:int = 0
+        realCornerPropDict[ 'bevel_settings' ][ 'profile_type' ]:int = 0
     
     return realCornerPropDict
 
@@ -2113,10 +2117,10 @@ def realCornerPropDictToStringBevel( realCornerPropDict:dict ) -> str:
     return realCornerPropString
 
 def realCornerPropIndexToDict( obj:object, propKey:str ) -> dict:
-    return realCornerPropStringToDict( obj[ propKey ] )
+    return realCornerBevelPropStringToDict(obj[propKey])
 
-def realCornerPropStringToDict( realCornerPropString:str ) -> str:
-    realCornerPropDict = createEmptyRealCornerPropDict()
+def realCornerBevelPropStringToDict( realCornerPropString:str ) -> str:
+    realCornerPropDict = createEmptyRealCornerPropDict('bevel')
     
     propertyValues = realCornerPropString.strip().lstrip( '219:' ).lstrip( '(' ).rstrip( ')' ).split( ')(' )
     

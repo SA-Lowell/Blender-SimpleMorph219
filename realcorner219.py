@@ -1629,7 +1629,8 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             ( "DO_NOTHING", "Do Nothing", "Does absolutely nothing" ),
             ( "ADD_BEVEL_LAYER", "Add Bevel Layer", "Adds a new bevel layer to the mesh" ),
             ( "MARK_AS_219_BASE", "Mark As 219 Base", "Marks the current object as a base object for all Simple Morph operations." ),
-            ( "UPDATE_LAYER", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" )
+            ( "UPDATE_LAYER", "Update Layer", "Initiates the operator menu for setting the bevel layer's settings" ),
+            ( "CAPTURE_OPERATION", "CAPTURE OPERATION", "Initiates the operator menu for setting the bevel layer's settings" ),
         ]
     )
     
@@ -1903,9 +1904,74 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             real_corner_meshes:Array = gen_real_corner_meshes( updatedObject, self.real_corner_layer_name )[0]
             
             bpy.ops.object.mode_set( mode = 'OBJECT')
-            real_corner_meshes[-1].to_mesh(context.selected_objects[0].data)
             context.selected_objects[0].update_from_editmode()
             realcorner219HandleSelectDeselectFunctionLocked = False
+            
+            layer_properties:dict = realCornerPropIndexToDict(context.selected_objects[0], context.scene.realCorner219Layers)
+            bpy.ops.object.mode_set( mode = 'EDIT')
+            mesh = bpy.context.object.data
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            bm.edges.ensure_lookup_table()
+            
+            for edge_id in layer_properties['edges']:
+                bm.edges[edge_id].select = True
+            
+            bpy.ops.object.mode_set( mode = 'OBJECT')
+            bm.to_mesh(mesh)
+            bpy.ops.object.mode_set( mode = 'EDIT')
+            bpy.ops.mesh.bevel(
+                'INVOKE_DEFAULT',
+                offset_type = salowell_bpy_lib.bevel_offset_type_items(layer_properties['bevel_settings']['offset_type']).name,
+                offset = float(layer_properties['bevel_settings']['offset']),
+                profile_type = salowell_bpy_lib.bevel_profile_type_items(layer_properties['bevel_settings']['profile_type']).name,
+                offset_pct = float(layer_properties['bevel_settings']['offset_pct']),
+                segments = int(layer_properties['bevel_settings']['segments']),
+                profile = float(layer_properties['bevel_settings']['profile']),
+                affect = salowell_bpy_lib.bevel_affect_items(layer_properties['bevel_settings']['affect']).name,
+                clamp_overlap = bool(int(layer_properties['bevel_settings']['clamp_overlap'])),
+                loop_slide = bool(int(layer_properties['bevel_settings']['loop_slide'])),
+                mark_seam = bool(int(layer_properties['bevel_settings']['mark_seam'])),
+                mark_sharp = bool(int(layer_properties['bevel_settings']['mark_sharp'])),
+                material = int(layer_properties['bevel_settings']['material']),
+                harden_normals = bool(int(layer_properties['bevel_settings']['harden_normals'])),
+                face_strength_mode = salowell_bpy_lib.bevel_face_strength_mode_items(layer_properties['bevel_settings']['face_strength_mode']).name, 
+                miter_outer = salowell_bpy_lib.bevel_miter_outer_items(layer_properties['bevel_settings']['miter_outer']).name, 
+                miter_inner = salowell_bpy_lib.bevel_miter_inner_items(layer_properties['bevel_settings']['miter_inner']).name, 
+                spread = float(layer_properties['bevel_settings']['spread']),
+                vmesh_method = salowell_bpy_lib.bevel_vmesh_method_items(layer_properties['bevel_settings']['vmesh_method']).name, 
+                release_confirm = False
+            )
+        elif self.action == 'CAPTURE_OPERATION':
+            layer_properties:dict = realCornerPropIndexToDict(context.selected_objects[0], context.scene.realCorner219Layers)
+            
+            active_op = bpy.context.active_operator
+            
+            if active_op:
+                if active_op.bl_idname == 'MESH_OT_bevel':
+                    if hasattr(active_op, "properties"):
+                        layer_properties['bevel_settings']['affect'] = salowell_bpy_lib.bevel_affect_items[active_op.properties.affect].value
+                        layer_properties['bevel_settings']['offset_type'] = salowell_bpy_lib.bevel_offset_type_items[active_op.properties.offset_type].value
+                        layer_properties['bevel_settings']['offset'] = active_op.properties.offset
+                        layer_properties['bevel_settings']['offset_pct'] = active_op.properties.offset_pct
+                        layer_properties['bevel_settings']['segments'] = active_op.properties.segments
+                        layer_properties['bevel_settings']['profile'] = active_op.properties.profile
+                        layer_properties['bevel_settings']['material'] = active_op.properties.material
+                        layer_properties['bevel_settings']['harden_normals'] = bool(active_op.properties.harden_normals)
+                        layer_properties['bevel_settings']['clamp_overlap'] = bool(active_op.properties.clamp_overlap)
+                        layer_properties['bevel_settings']['loop_slide'] = bool(active_op.properties.loop_slide)
+                        layer_properties['bevel_settings']['mark_seam'] = bool(active_op.properties.mark_seam)
+                        layer_properties['bevel_settings']['mark_sharp'] = bool(active_op.properties.mark_sharp)
+                        layer_properties['bevel_settings']['miter_outer'] = salowell_bpy_lib.bevel_miter_outer_items[active_op.properties.miter_outer].value
+                        layer_properties['bevel_settings']['miter_inner'] = salowell_bpy_lib.bevel_miter_inner_items[active_op.properties.miter_inner].value
+                        layer_properties['bevel_settings']['spread'] = active_op.properties.spread
+                        layer_properties['bevel_settings']['vmesh_method'] = salowell_bpy_lib.bevel_vmesh_method_items[active_op.properties.vmesh_method].value
+                        layer_properties['bevel_settings']['face_strength_mode'] = salowell_bpy_lib.bevel_face_strength_mode_items[active_op.properties.face_strength_mode].value
+                        layer_properties['bevel_settings']['profile_type'] = salowell_bpy_lib.bevel_profile_type_items[active_op.properties.profile_type].value
+                        layer_properties_string:str = realCornerPropDictToStringBevel(layer_properties)
+                        
+                        bpy.data.objects.get(realCorner219SelectedBaseObjName)[context.scene.realCorner219Layers] = layer_properties_string
         else:
             realcorner219HandleSelectDeselectFunctionLocked = True
             update_real_corner_bevel_values_locked = True
@@ -2002,10 +2068,14 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
         
         if hasLayers:
             updateLayerBtn = layout.column()
+            captureOperationBtn = layout.column()
             updateLayerObj = updateLayerBtn.operator( 'simplemorph.219_real_corner_operations_op', text = 'Update Layer' )
+            captureOperationObj = captureOperationBtn.operator('simplemorph.219_real_corner_operations_op', text = 'Capture Operation')
             
             if not simplemorph219.isSimpleMorphBaseObject( selectedObject ):
                 updateLayerBtn.enabled = False
+            else:
+                captureOperationBtn.enabled = False
             
             updateLayerObj.action = 'UPDATE_LAYER'
             updateLayerObj.real_corner_layer_name = realCorner219LayerIndex
@@ -2013,6 +2083,14 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
             updateLayerObj.originalObjectName = selectedObject.name
             updateLayerObj.objectLayerBeingModified = context.scene.realCorner219Layers
 
+            captureOperationObj.action = 'CAPTURE_OPERATION'
+            captureOperationObj.real_corner_layer_name = realCorner219LayerIndex
+            captureOperationObj.real_corner_layer_index = get_real_corner_custom_prop_key_index(context.selected_objects[0], realCorner219LayerIndex)
+            
+            captureOperationObj.originalObjectName = realCorner219SelectedBaseObjName
+            
+            captureOperationObj.objectLayerBeingModified = context.scene.realCorner219Layers
+    
     def execute( self, context ):
         bevelLayers = get_all_real_corner_custom_prop_keys( context.selected_objects[0] )
 

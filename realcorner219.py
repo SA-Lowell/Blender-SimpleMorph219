@@ -1921,6 +1921,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             bpy.ops.object.mode_set( mode = 'OBJECT')
             bm.to_mesh(mesh)
             bpy.ops.object.mode_set( mode = 'EDIT')
+            
             bpy.ops.mesh.bevel(
                 'INVOKE_DEFAULT',
                 offset_type = salowell_bpy_lib.bevel_offset_type_items(layer_properties['bevel_settings']['offset_type']).name,
@@ -2082,7 +2083,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_PT_panel( Panel ):
             updateLayerObj.real_corner_layer_index = get_real_corner_custom_prop_key_index( context.selected_objects[0], realCorner219LayerIndex )
             updateLayerObj.originalObjectName = selectedObject.name
             updateLayerObj.objectLayerBeingModified = context.scene.realCorner219Layers
-
+            
             captureOperationObj.action = 'CAPTURE_OPERATION'
             captureOperationObj.real_corner_layer_name = realCorner219LayerIndex
             captureOperationObj.real_corner_layer_index = get_real_corner_custom_prop_key_index(context.selected_objects[0], realCorner219LayerIndex)

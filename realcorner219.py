@@ -1671,6 +1671,79 @@ class SIMPLE_MORPH_219_REAL_CORNER_QuickOps( Operator ):
         
         return { 'FINISHED' }
 
+def get_edges_from_dynamic_edge(dynamic_edge:Array, blender_object:object) -> Array:
+    """
+        Retrieves all of the edges that belong to the given dynamic_edge.
+        NOTE: The layer index is determined by dynamic_edge[3]. This represents the layer at which the edges are selected/mapped to the dynamic edge. It's generally a layer below where the dynamic edges are saved.
+        WARNING: This function generates meshes and layer maps every time it's ran and technically works as a wrapper for get_edges_from_dynamic_edge_fast(), so consider using that function instead.
+        
+        Parameters
+        ----------
+            dynamic_edge: Array
+                The dynamic edge to use as a selection. See the return result of edge_to_edge_reference_bevel() for a reference on how this array is formatted.
+
+            blender_object: obj
+                The Blender Object that will be used as the base object. This object must contain all the simple morph properties.
+        
+        Returns
+        -------
+            edge_ids: Array
+                An array of all edge IDs
+    """
+    global realCorner219PropName
+    
+    gen_real_corner_meshes_result:Array = gen_real_corner_meshes(blender_object, realCorner219PropName + str(dynamic_edge[3]))
+    
+    edge_indexes = get_edges_from_dynamic_edge_fast(dynamic_edge, gen_real_corner_meshes_result[7][dynamic_edge[3]])
+    
+    return edge_ids
+
+def get_edges_from_dynamic_edge_fast(dynamic_edge:Array, layer_map:simple_morph_219_layer_map) -> Array:
+    """
+        Retrieves all of the edges that belong to the given dynamic_edge.
+        NOTE: The layer index is determined by dynamic_edge[3]. This represents the layer at which the edges are selected/mapped to the dynamic edge. It's generally a layer below where the dynamic edges are saved.
+        WARNING: consider using this function over get_edges_from_dynamic_edge(), as this one does not have to generate a full bevel map and all its meshes every time it runs.
+        
+        Parameters
+        ----------
+            dynamic_edge: Array
+                The dynamic edge to use as a selection. See the return result of edge_to_edge_reference_bevel() for a reference on how this array is formatted.
+
+            layer_map: simple_morph_219_layer_map
+                
+        
+        Returns
+        -------
+            edge_indexes: Array
+                An array of all edge indexes
+            
+            edge_objects: Array
+                An array of all edge objects
+    """
+    edge_ids:Array = []
+    
+    if dynamic_edge[0] == 0:
+        previous_edge_ids:Array = list(layer_map.unbeveled_edges.keys())
+        edge_ids.append(layer_map.unbeveled_edges[previous_edge_ids[dynamic_edge[1]]])
+    elif dynamic_edge[0] == 1:
+        previous_edge_ids:Array = list(layer_map.beveled_startend_edges_to_last_edge.keys())
+        edge_ids.append(layer_map.beveled_startend_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][0])
+    elif dynamic_edge[0] == 2:
+        previous_edge_ids:Array = list(layer_map.beveled_startend_edges_to_last_edge.keys())
+        edge_ids.append(layer_map.beveled_startend_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][1])
+    elif dynamic_edge[0] == 3:
+#TODO: The percentage of dynamic_edge[2] is not yet used.
+        previous_edge_ids:Array = list(layer_map.beveled_parallel_edges_to_last_edge.keys())
+        edge_ids = layer_map.beveled_parallel_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]]
+    elif dynamic_edge[0] == 4:
+        previous_edge_ids:Array = list(layer_map.beveled_leftright_edges_to_last_edge.keys())
+        edge_ids = layer_map.beveled_leftright_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][0]
+    elif dynamic_edge[0] == 5:
+        previous_edge_ids:Array = list(layer_map.beveled_leftright_edges_to_last_edge.keys())
+        edge_ids = layer_map.beveled_leftright_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][1]
+    
+    return edge_ids
+
 class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
     bl_idname = 'simplemorph.219_real_corner_operations_op'
     bl_label = 'Real Corner 219 - Layer Settings'

@@ -13,6 +13,11 @@ import mathutils
 
 from . import salowell_bpy_lib, simplemorph219
 
+#[0] = 1 -> vertex
+#[0] = 2 -> edge
+#[0] = 3 -> face
+#[1] = Index of the selected vertex/edge/face within the current object/mesh
+#[2] = The layer_maps object which contains every layer_map leading up to the currently selected layer.
 pie_menu_selection_data:Array = [0, 0, None]
 
 class realcorner219_procedural_edge_select_types( Enum ):
@@ -179,7 +184,6 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
         
         selected_edges = salowell_bpy_lib.get_selected_edges(bpy.context.selected_objects[0])[1]
         
-        simple_morph_219_obj:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
         edge_id:int = -1
         
         if len(selected_edges) > 0:

@@ -599,7 +599,7 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
 
     new_bevel_face_ids_ordered:Array = new_bevel_face_ids_in.copy()
     new_bevel_face_ids_ordered.sort()
-
+    
     #This variable is a copy of the new faces but without the terminator faces. The terminator faces are *always* the lower bounds of new face IDs, while the actual columns that were formed from the previous edge are always the upper bounds of the IDs.
     non_terminator_start_index:int = len(new_bevel_face_ids_in) - (bevel_segments * len(previous_unbeveled_edge_ids_in))
     new_bevel_face_ids_ordered_without_terminators:Array = new_bevel_face_ids_ordered[non_terminator_start_index:]
@@ -641,7 +641,7 @@ def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blende
     
     faces_per_column:int = bevel_segments
     
-    for previous_unbeveled_edge_id  in previous_unbeveled_edge_ids_pathed:
+    for previous_unbeveled_edge_id in previous_unbeveled_edge_ids_pathed:
         previous_unbeveled_edge_id_index = previous_unbeveled_edge_ids_ordered.index(previous_unbeveled_edge_id)
         
         faces_of_column_range_start:int = previous_unbeveled_edge_id_index * faces_per_column
@@ -1065,7 +1065,7 @@ def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:
     
     for edge_index in edge_ids_to_bevel:
         selected_edge_objects.append(blender_mesh.edges[edge_index])
-
+    
     bevel_result:dict = bmesh.ops.bevel(
         blender_mesh,
         geom = selected_edge_objects,

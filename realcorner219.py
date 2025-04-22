@@ -1815,64 +1815,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
     )
     
     def draw( self, context ):
-        layout = self.layout
-        layout.label( text = 'Updating Layer ' + str( self.real_corner_layer_index ) )
-        
-        affect_column = layout.column()
-        affect_input = affect_column.prop( self, property = "affect", text = 'Affect', expand = True)
-        affect_column.enabled = False
-        
-        offset_type_column = layout.column()
-        offset_type_input = offset_type_column.prop( self, property = "offset_type", text = 'Width Type' )
-        
-        offset_column = layout.column()
-        offset_input = offset_column.prop( self, property = "offset", text = 'Width' )
-        
-        offset_pct_column = layout.column()
-        offset_pct_input = offset_pct_column.prop( self, property = "offset_pct", text = 'Width Percent' )
-
-        segments_column = layout.column()
-        segments_input = segments_column.prop( self, property = "segments", text = "Segments" )
-        
-        profile_column = layout.column()
-        profile_input = profile_column.prop( self, property = "profile", text = "Shape" )
-        
-        material_column = layout.column()
-        material_input = material_column.prop( self, property = "material", text = "Material Index" )
-        
-        harden_normals_column = layout.column()
-        harden_normals_input = harden_normals_column.prop( self, property = "harden_normals", text = "Harden Normals" )
-        
-        clamp_overlap_column = layout.column()
-        clamp_overlap_input = clamp_overlap_column.prop( self, property = "clamp_overlap", text = "Clamp Overlap" )
-        
-        loop_slide_column = layout.column()
-        loop_slide_input = loop_slide_column.prop( self, property = "loop_slide", text = "Loop Slide" )
-        
-        mark_seam_column = layout.column()
-        mark_seam_input = mark_seam_column.prop( self, property = "mark_seam", text = "Seams" )
-        
-        mark_sharp_column = layout.column()
-        mark_sharp_input = mark_sharp_column.prop( self, property = "mark_sharp", text = "Sharp" )
-        
-        miter_outer_column = layout.column()
-        miter_outer_input = miter_outer_column.prop( self, property = "miter_outer", text = "Outer" )
-        
-        miter_inner_column = layout.column()
-        miter_inner_input = miter_inner_column.prop( self, property = "miter_inner", text = "Inner" )
-        
-        spread_column = layout.column()
-        spread_input = spread_column.prop( self, property = "spread", text = "Spread" )
-        
-        vmesh_method_column = layout.column()
-        vmesh_method_input = vmesh_method_column.prop( self, property = "vmesh_method", text = "Intersection Type" )
-        
-        face_strength_mode_column = layout.column()
-        face_strength_mode_input = face_strength_mode_column.prop( self, property = "face_strength_mode", text = "Face Strength" )
-        
-        profile_type_column = layout.column()
-        profile_type_input = profile_type_column.prop( self, property = "profile_type", text = "Profile Type", expand = True )
-        profile_type_column.enabled = False
+        pass
 
     def execute( self, context ):
         global realCorner219CurrentState, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName, realcorner219HandleSelectDeselectFunctionLocked, update_real_corner_bevel_values_locked

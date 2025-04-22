@@ -1694,7 +1694,7 @@ def get_edges_from_dynamic_edge(dynamic_edge:Array, blender_object:object) -> Ar
     
     gen_real_corner_meshes_result:Array = gen_real_corner_meshes(blender_object, realCorner219PropName + str(dynamic_edge[3]))
     
-    edge_indexes = get_edges_from_dynamic_edge_fast(dynamic_edge, gen_real_corner_meshes_result[7][dynamic_edge[3]])
+    edge_ids = get_edges_from_dynamic_edge_fast(dynamic_edge, gen_real_corner_meshes_result[7][dynamic_edge[3]])
     
     return edge_ids
 
@@ -2354,7 +2354,7 @@ def genRealCornerMeshAtPrevIndex( obj, layerIndexKey ) -> Array | Array | Array:
     if propKeyIndex > 0:
         propKeyIndex -= 1
         PropKeysArr = get_all_real_corner_custom_prop_keys( obj )
-        generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices =  gen_real_corner_meshes( obj, PropKeysArr[ propKeyIndex ] )
+        generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices, layer_maps =  gen_real_corner_meshes( obj, PropKeysArr[ propKeyIndex ] )
 
     return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
 

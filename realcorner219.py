@@ -2379,7 +2379,7 @@ def gen_real_corner_meshes_from_index( obj:object, index:int ) -> Array | Array 
     
     return gen_real_corner_meshes( obj, prop_key )
     
-def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | Array | Array | Array | Array | Array:
+def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | Array | Array | Array | Array | Array | Array:
     global simple_morph_219_object_list, realCorner219SelectedBaseObjName, realCorner219ModifiedObjName
     
     simple_morph_219_obj:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(obj.name)
@@ -2398,6 +2398,7 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
     
     previous_blender_mesh:bmesh.types.BMesh = None
     layer_map:simple_morph_219_object = None
+    layer_maps:Array = []
     
     for propKey in range( 0, layerIndex + 1 ):
         if propKey == 0:
@@ -2463,10 +2464,11 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
             simple_morph_219_obj.set_layer(realCornerPropKeys[ propKey ], layer_map )
             
             simple_morph_219_obj
+            layer_maps.append(layer_map)
         
         previous_blender_mesh = new_blender_mesh.copy()
     
-    return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices
+    return generated_meshes, selected_face_objects, selected_face_indexes, selected_edge_objects, selected_edge_indexes, selected_vertex_objects, selected_vertices, layer_maps
 
 @bpy.app.handlers.persistent
 def real_corner_219_handle_edge_select_mode_click( scene, depsgraph ):

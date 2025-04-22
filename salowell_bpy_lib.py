@@ -1061,6 +1061,8 @@ def bevel( blender_mesh:bmesh.types.BMesh, edge_ids_to_bevel:Array, offset_type:
     
     blender_mesh.edges.ensure_lookup_table()
     
+    edge_ids_to_bevel = list(set(edge_ids_to_bevel))
+    
     for edge_index in edge_ids_to_bevel:
         selected_edge_objects.append(blender_mesh.edges[edge_index])
 

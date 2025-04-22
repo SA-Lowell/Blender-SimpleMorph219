@@ -589,6 +589,7 @@ def order_edges_by_pathing(blender_mesh:bmesh.types.BMesh, edge_ids:Array) -> Ar
 #TODO: If you order the pre-bevel edges by ID number (0-n), and then order the newly created bevel faces by id number (0-n), you can pair them up using these ordered values!!!!!.
 #Do not try to dsetermine left and right based on largest and smallest faces in each row. The order can swap here.
 def generate_bevel_layer_map(new_blender_mesh:bmesh.types.BMesh, previous_blender_mesh:bmesh.types.BMesh, new_bevel_face_ids_in:Array, previous_unbeveled_edge_ids_in:Array, bevel_segments:int) -> dict:
+    previous_unbeveled_edge_ids_in = list(set(previous_unbeveled_edge_ids_in))
     bounding_edge_ids = get_bounding_edges_of_face_groups(new_blender_mesh, new_bevel_face_ids_in)[3]
     layer_map:realcorner219.simple_morph_219_layer_map = realcorner219.simple_morph_219_layer_map()
     layer_map.set_empty()

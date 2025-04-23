@@ -2470,8 +2470,6 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
         
         grouped_faces = salowell_bpy_lib.separate_orphaned_and_faced_edges(blender_mesh, propDic[ 'edges' ])
         
-        edge_count:int = len( blender_mesh.edges )
-        
         edge_selection_type = 0
         
         if len(grouped_faces[1]) > 0:
@@ -2525,7 +2523,6 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
             layer_map = salowell_bpy_lib.generate_bevel_layer_map(new_blender_mesh, previous_blender_mesh, bevel_result[2].copy(), edges_to_bevel.copy(), propDic[ 'bevel_settings' ][ 'segments' ])
             simple_morph_219_obj.set_layer(realCornerPropKeys[ propKey ], layer_map )
             
-            simple_morph_219_obj
             layer_maps.append(layer_map)
         
         previous_blender_mesh = new_blender_mesh.copy()

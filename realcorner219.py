@@ -192,17 +192,60 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
         s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
         previous_layer_key = get_previous_real_corner_custom_prop_key(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
         
-        selection_value = edge_to_edge_reference(edge_id, s_m_219_object, previous_layer_key )
+        selection_value_tmp = edge_to_edge_reference_bevel(edge_id, s_m_219_object, previous_layer_key )
+        selection_value_tmp2 = selection_value_tmp
+        selection_value_tmp = []
+        previous_layer_index:int = int(previous_layer_key.split('_')[1])
+        
+        for value in selection_value_tmp2:
+            if value[3] == previous_layer_index:
+                selection_value_tmp.append(value)
+        
+        selection_value:Array = []
         
         layer_properties:dict = realCornerPropIndexToDict(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
         
-        already_added:bool = False
-        for edge_reference in layer_properties['edge_references']:
-            if salowell_bpy_lib.arrays_equal(edge_reference, selection_value):
-                already_added = True
+        if self.action == 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE':
+            print('selection_value_tmp: ' + str(selection_value_tmp))
+            for value in selection_value_tmp:
+                if value[0] == 0:
+                    selection_value.append(value)
+        elif self.action == 'BEVEL_-_LAST_EDGE_-_START_EDGE':
+            for value in selection_value_tmp:
+                if value[0] == 1:
+                    selection_value.append(value)
+        elif self.action == 'BEVEL_-_LAST_EDGE_-_END_EDGE':
+            for value in selection_value_tmp:
+                if value[0] == 2:
+                    selection_value.append(value)
+        elif self.action == 'BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE':
+            for value in selection_value_tmp:
+                if value[0] == 3:
+                    selection_value.append(value)
+        elif self.action == 'BEVEL_-_LAST_EDGE_-_LEFT_EDGE':
+            for value in selection_value_tmp:
+                if value[0] == 4:
+                    selection_value.append(value)
+        elif self.action == 'BEVEL_-_LAST_EDGE_-_RIGHT_EDGE':
+            for value in selection_value_tmp:
+                if value[0] == 5:
+                    selection_value.append(value)
+        else:
+            selection_value = selection_value_tmp
         
-        if not already_added:
-            layer_properties['edge_references'].append(selection_value)
+        already_added:Array = [False] * len(selection_value)
+        
+        for index in range(len(selection_value)):
+            for edge_reference in layer_properties['edge_references']:
+                if salowell_bpy_lib.arrays_equal(edge_reference, selection_value[index]):
+                    already_added[index] = True
+                    break
+        
+        for index in range(len(already_added)):
+            if not already_added[index]:
+                layer_properties['edge_references'].append(selection_value[index])
+            index += 1
+        
         layer_properties['edges'] = []
         
         real_corner_prop_string:str = realCornerPropDictToStringBevel( layer_properties )

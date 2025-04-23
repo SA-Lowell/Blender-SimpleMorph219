@@ -2020,21 +2020,40 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             realCorner219ModifiedObjName = updatedObject.name
             self.placeholderObjectName = context.selected_objects[0].name
             
-            real_corner_meshes:Array = gen_real_corner_meshes( updatedObject, self.real_corner_layer_name )[0]
+            gen_real_corner_meshes_result:Array = gen_real_corner_meshes(updatedObject, self.real_corner_layer_name)
+            real_corner_meshes:Array = gen_real_corner_meshes_result[0]
+            real_corner_layer_maps:Array = gen_real_corner_meshes_result[7]
             
             bpy.ops.object.mode_set( mode = 'OBJECT')
             context.selected_objects[0].update_from_editmode()
             realcorner219HandleSelectDeselectFunctionLocked = False
             
+            layer_index:int = int(self.real_corner_layer_name.split('_')[1]) - 1
             layer_properties:dict = realCornerPropIndexToDict(context.selected_objects[0], context.scene.realCorner219Layers)
             bpy.ops.object.mode_set( mode = 'EDIT')
             mesh = bpy.context.object.data
             bpy.ops.mesh.select_all(action='DESELECT')
-            bm = bmesh.new()
-            bm.from_mesh(mesh)
+            
+            if layer_index < 0:
+                bm = bmesh.new()
+                bm.from_mesh(mesh)
+            else:
+                bm = real_corner_meshes[len(real_corner_meshes) - 2]
+            
             bm.edges.ensure_lookup_table()
             
-            for edge_id in layer_properties['edges']:
+            edges_to_select:Array = []
+            
+            if len(layer_properties['edge_references']) != 0:
+                for edge_reference in layer_properties['edge_references']:
+                    edges = get_edges_from_dynamic_edge_fast(edge_reference, real_corner_layer_maps[edge_reference[3]])
+                    
+                    for edge_id in edges:
+                        edges_to_select.append(edge_id)
+            else:
+                edges_to_select = layer_properties['edges']
+            
+            for edge_id in edges_to_select:
                 bm.edges[edge_id].select = True
             
             bpy.ops.object.mode_set( mode = 'OBJECT')

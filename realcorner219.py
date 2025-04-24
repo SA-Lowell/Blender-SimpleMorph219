@@ -192,7 +192,7 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
         s_m_219_object:simple_morph_219_object = create_if_not_exists_simple_morph_219_object(realCorner219SelectedBaseObjName)
         previous_layer_key = get_previous_real_corner_custom_prop_key(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
         
-        selection_value_tmp = edge_to_edge_reference_bevel(edge_id, s_m_219_object, previous_layer_key )
+        selection_value_tmp = edge_to_edge_reference_bevel(edge_id, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name], previous_layer_key )
         selection_value_tmp2 = selection_value_tmp
         selection_value_tmp = []
         previous_layer_index:int = int(previous_layer_key.split('_')[1])
@@ -1117,7 +1117,7 @@ def create_if_not_exists_simple_morph_219_object(object_name) -> simple_morph_21
     pie_menu_selection_data[2] = s_m_219_obj
     return s_m_219_obj
 
-def edge_to_edge_reference_bevel(edge_id, simple_morph_219_obj:simple_morph_219_object, top_layer_prop_key_name:str) -> Array:
+def edge_to_edge_reference_bevel(edge_id, layer_maps:Array, blender_object:object, top_layer_prop_key_name:str) -> Array:
     """
     Returns the dynamic edges that the given edge_id maps to. This can be more than one dynamic edge.
     
@@ -1126,8 +1126,11 @@ def edge_to_edge_reference_bevel(edge_id, simple_morph_219_obj:simple_morph_219_
     edge_id : int
         The index of the edge you are trying to map.
     
-    simple_morph_219_obj : simple_morph_219_object
-        This needs to be a complete simple_morph_219_object object 
+    layer_maps : Array
+        An array of layer_maps to use for this calculation.
+    
+    blender_object: object
+        A blender object where all the layer properties reside.
     
     top_layer_prop_key_name : str
         The name of the layer that edge_id resides in.
@@ -1170,14 +1173,14 @@ def edge_to_edge_reference_bevel(edge_id, simple_morph_219_obj:simple_morph_219_
     """
     edge = edge_id
     
-    real_corner_custom_prop_keys:Array = get_all_real_corner_custom_prop_keys(bpy.data.objects[simple_morph_219_obj.object_name])
+    real_corner_custom_prop_keys:Array = get_all_real_corner_custom_prop_keys(blender_object)
     real_corner_prop_index = real_corner_custom_prop_keys.index(top_layer_prop_key_name)
     selection_values:Array = []
     
     while real_corner_prop_index >= 0:
         selection_value:Array = [0, 0, 0.0, real_corner_prop_index]
         selection_value[3] = real_corner_prop_index
-        layer_map = simple_morph_219_obj.layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
+        layer_map = layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
         real_corner_prop_index -= 1
         is_unbeveled:bool = False
         previous_edge_id:int = 0
@@ -1201,7 +1204,7 @@ def edge_to_edge_reference_bevel(edge_id, simple_morph_219_obj:simple_morph_219_
                     selection_value = [0, 0, 0.0, real_corner_prop_index + 1]
             
             if real_corner_prop_index >= 0:
-                layer_map = simple_morph_219_obj.layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
+                layer_map = layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
                 edge = previous_edge_id
         else:
             layer_map_index:int = -1

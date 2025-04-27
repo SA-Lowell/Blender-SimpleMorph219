@@ -1759,6 +1759,44 @@ def get_edges_from_dynamic_edge(dynamic_edge:Array, blender_object:object) -> Ar
     return edge_ids
 
 def get_edges_from_dynamic_edge_fast(dynamic_edge:Array, layer_map:simple_morph_219_layer_map) -> Array:
+def get_edge_ids_from_dynamic_edge(dynamic_edge:Array, layer_maps:Array) -> Array:
+    """
+        Retrieves all of the edges ids that this dynamic_edge directly points towards/references. This does not do a full tree search for all edges that this one "technically" references.
+        
+        Parameters
+        ----------
+            dynamic_edge: Array
+                The dynamic edge to use as a selection. See the return result of edge_to_edge_reference_bevel() for a reference on how this array is formatted.
+            
+            layer_maps: Array
+                An array of simple_morph_219_layer_map objects. Must be in correct order.
+        
+        Returns
+        -------
+            edge_ids: Array
+                An array of all edge IDs/indexes
+    """
+    layer_maps = layer_maps_to_array(layer_maps)
+    
+    edge_ids:Array = [int]
+    layer_map:simple_morph_219_layer_map = layer_maps[dynamic_edge[3]]
+    
+    match dynamic_edge[0]:
+        case 0:
+            edge_ids.append(list(layer_map.unbeveled_edges.values())[dynamic_edge[1]])
+        case 1:
+            edge_ids.append(list(layer_map.beveled_startend_edges_to_last_edge.values())[dynamic_edge[1]][0])
+        case 2:
+            edge_ids.append(list(layer_map.beveled_startend_edges_to_last_edge.values())[dynamic_edge[1]][1])
+        case 3:
+            edge_ids = edge_ids + list(layer_map.beveled_parallel_edges_to_last_edge.values())[dynamic_edge[1]]
+        case 4:
+            edge_ids.append(list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][0])
+        case 5:
+            edge_ids.append(list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][1])
+    
+    return edge_ids
+
     """
         Retrieves all of the edges that belong to the given dynamic_edge.
         NOTE: The layer index is determined by dynamic_edge[3]. This represents the layer at which the edges are selected/mapped to the dynamic edge. It's generally a layer below where the dynamic edges are saved.

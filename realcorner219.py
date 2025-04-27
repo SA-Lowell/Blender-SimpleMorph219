@@ -1741,7 +1741,7 @@ def get_edges_from_dynamic_edge(dynamic_edge:Array, blender_object:object) -> Ar
         ----------
             dynamic_edge: Array
                 The dynamic edge to use as a selection. See the return result of edge_to_edge_reference_bevel() for a reference on how this array is formatted.
-
+            
             blender_object: obj
                 The Blender Object that will be used as the base object. This object must contain all the simple morph properties.
         

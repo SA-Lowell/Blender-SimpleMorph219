@@ -206,7 +206,6 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
         layer_properties:dict = realCornerPropIndexToDict(bpy.context.selected_objects[0], context.scene.realCorner219Layers)
         
         if self.action == 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE':
-            print('selection_value_tmp: ' + str(selection_value_tmp))
             for value in selection_value_tmp:
                 if value[0] == 0:
                     selection_value.append(value)
@@ -1802,7 +1801,6 @@ def get_edges_from_dynamic_edge_fast(dynamic_edge:Array, layer_map:simple_morph_
     elif dynamic_edge[0] == 5:
         previous_edge_ids:Array = list(layer_map.beveled_leftright_edges_to_last_edge.keys())
         edge_ids = layer_map.beveled_leftright_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][1]
-    
     return edge_ids
 
 class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):

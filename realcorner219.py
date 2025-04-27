@@ -1117,6 +1117,20 @@ def create_if_not_exists_simple_morph_219_object(object_name) -> simple_morph_21
     pie_menu_selection_data[2] = s_m_219_obj
     return s_m_219_obj
 
+def layer_maps_to_array(layer_maps):
+    layer_maps_array:Array = []
+    
+    if isinstance(layer_maps, list):
+        for layer_map in layer_maps:
+            layer_maps_array.append(layer_map)
+    elif isinstance(layer_maps, dict):
+        for layer_map in layer_maps.values():
+            layer_maps_array.append(layer_map)
+    else:
+        layer_maps_array = layer_maps
+    
+    return layer_maps_array
+
 def edge_to_edge_reference_bevel(edge_id, layer_maps:Array, blender_object:object, top_layer_prop_key_name:str) -> Array:
     """
     Returns the dynamic edges that the given edge_id maps to. This can be more than one dynamic edge.
@@ -1171,6 +1185,7 @@ def edge_to_edge_reference_bevel(edge_id, layer_maps:Array, blender_object:objec
             ]
         ]
     """
+    layer_maps = layer_maps_to_array(layer_maps)
     edge = edge_id
     
     real_corner_custom_prop_keys:Array = get_all_real_corner_custom_prop_keys(blender_object)
@@ -1180,7 +1195,7 @@ def edge_to_edge_reference_bevel(edge_id, layer_maps:Array, blender_object:objec
     while real_corner_prop_index >= 0:
         selection_value:Array = [0, 0, 0.0, real_corner_prop_index]
         selection_value[3] = real_corner_prop_index
-        layer_map = layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
+        layer_map = layer_maps[real_corner_prop_index]
         real_corner_prop_index -= 1
         is_unbeveled:bool = False
         previous_edge_id:int = 0
@@ -1204,7 +1219,7 @@ def edge_to_edge_reference_bevel(edge_id, layer_maps:Array, blender_object:objec
                     selection_value = [0, 0, 0.0, real_corner_prop_index + 1]
             
             if real_corner_prop_index >= 0:
-                layer_map = layer_maps[real_corner_custom_prop_keys[real_corner_prop_index]]
+                layer_map = layer_maps[real_corner_prop_index]
                 edge = previous_edge_id
         else:
             layer_map_index:int = -1

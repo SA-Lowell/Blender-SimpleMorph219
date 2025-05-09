@@ -1778,7 +1778,7 @@ def get_edge_ids_from_dynamic_edge(dynamic_edge:Array, layer_maps:Array) -> Arra
     """
     layer_maps = layer_maps_to_array(layer_maps)
     
-    edge_ids:Array = [int]
+    edge_ids:Array = []
     layer_map:simple_morph_219_layer_map = layer_maps[dynamic_edge[3]]
     
     match dynamic_edge[0]:
@@ -1791,9 +1791,9 @@ def get_edge_ids_from_dynamic_edge(dynamic_edge:Array, layer_maps:Array) -> Arra
         case 3:
             edge_ids = edge_ids + list(layer_map.beveled_parallel_edges_to_last_edge.values())[dynamic_edge[1]]
         case 4:
-            edge_ids.append(list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][0])
+            edge_ids = edge_ids + list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][0]
         case 5:
-            edge_ids.append(list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][1])
+            edge_ids = edge_ids + list(layer_map.beveled_leftright_edges_to_last_edge.values())[dynamic_edge[1]][1]
     
     return edge_ids
 

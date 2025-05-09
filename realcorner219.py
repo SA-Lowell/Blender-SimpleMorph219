@@ -1760,11 +1760,10 @@ def get_edges_from_dynamic_edge(dynamic_edge:Array, blender_object:object) -> Ar
     
     gen_real_corner_meshes_result:Array = gen_real_corner_meshes(blender_object, realCorner219PropName + str(dynamic_edge[3]))
     
-    edge_ids = get_edges_from_dynamic_edge_fast(dynamic_edge, gen_real_corner_meshes_result[7][dynamic_edge[3]])
+    edge_ids = get_edges_from_dynamic_edge_fast(dynamic_edge, gen_real_corner_meshes_result[7], blender_object)
     
     return edge_ids
 
-def get_edges_from_dynamic_edge_fast(dynamic_edge:Array, layer_map:simple_morph_219_layer_map) -> Array:
 def get_edge_ids_from_dynamic_edge(dynamic_edge:Array, layer_maps:Array) -> Array:
     """
         Retrieves all of the edges ids that this dynamic_edge directly points towards/references. This does not do a full tree search for all edges that this one "technically" references.
@@ -1959,8 +1958,10 @@ def get_layer_map_edges_from_previous_layer_map_edge(previous_layer_map_edge_id:
     
     return edge_indexes
     
+def get_edges_from_dynamic_edge_fast(dynamic_edge:Array, layer_maps:Array, blender_object:object) -> Array:
     """
         Retrieves all of the edges that belong to the given dynamic_edge.
+        This is different from get_edge_ids_from_dynamic_edge() as this function[get_edges_from_dynamic_edge_fast()] travels all the way down the layer_maps so it can determine all the edges that were dynamiclly generated and that technically should be included in this, whereas the other function only grabs the edges of this layer.
         NOTE: The layer index is determined by dynamic_edge[3]. This represents the layer at which the edges are selected/mapped to the dynamic edge. It's generally a layer below where the dynamic edges are saved.
         WARNING: consider using this function over get_edges_from_dynamic_edge(), as this one does not have to generate a full bevel map and all its meshes every time it runs.
         
@@ -1968,40 +1969,43 @@ def get_layer_map_edges_from_previous_layer_map_edge(previous_layer_map_edge_id:
         ----------
             dynamic_edge: Array
                 The dynamic edge to use as a selection. See the return result of edge_to_edge_reference_bevel() for a reference on how this array is formatted.
-
-            layer_map: simple_morph_219_layer_map
-                
+            
+            layer_maps: Array
+                An array of simple_morph_219_layer_map objects. Must be in correct order.
         
         Returns
         -------
             edge_indexes: Array
                 An array of all edge indexes
-            
-            edge_objects: Array
-                An array of all edge objects
     """
+    global realCorner219PropName
+    
+    layer_maps = layer_maps_to_array(layer_maps)
+    
     edge_ids:Array = []
     
-    if dynamic_edge[0] == 0:
-        previous_edge_ids:Array = list(layer_map.unbeveled_edges.keys())
-        edge_ids.append(layer_map.unbeveled_edges[previous_edge_ids[dynamic_edge[1]]])
-    elif dynamic_edge[0] == 1:
-        previous_edge_ids:Array = list(layer_map.beveled_startend_edges_to_last_edge.keys())
-        edge_ids.append(layer_map.beveled_startend_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][0])
-    elif dynamic_edge[0] == 2:
-        previous_edge_ids:Array = list(layer_map.beveled_startend_edges_to_last_edge.keys())
-        edge_ids.append(layer_map.beveled_startend_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][1])
-    elif dynamic_edge[0] == 3:
-#TODO: The percentage of dynamic_edge[2] is not yet used.
-        previous_edge_ids:Array = list(layer_map.beveled_parallel_edges_to_last_edge.keys())
-        edge_ids = layer_map.beveled_parallel_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]]
-    elif dynamic_edge[0] == 4:
-        previous_edge_ids:Array = list(layer_map.beveled_leftright_edges_to_last_edge.keys())
-        edge_ids = layer_map.beveled_leftright_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][0]
-    elif dynamic_edge[0] == 5:
-        previous_edge_ids:Array = list(layer_map.beveled_leftright_edges_to_last_edge.keys())
-        edge_ids = layer_map.beveled_leftright_edges_to_last_edge[previous_edge_ids[dynamic_edge[1]]][1]
-    return edge_ids
+    high_index:int = dynamic_edge[3]
+    low_edge_id:int = list(layer_maps[high_index].unbeveled_edges.values())[dynamic_edge[1]]
+    
+    layer_dynamic_edge = get_low_dynamic_edge_from_dynamic_edge(dynamic_edge, layer_maps, blender_object)
+    
+    low_edge_ids:Array = get_edge_ids_from_dynamic_edge(layer_dynamic_edge, layer_maps)
+    
+    layer_map_index:int = layer_dynamic_edge[3]
+    
+    loop_edge_ids:Array = low_edge_ids
+    
+    while layer_map_index < high_index:
+        edge_ids:Array = []
+        layer_map_index += 1
+        
+        for low_edge_id in loop_edge_ids:
+            edge_id:int = layer_maps[layer_map_index].unbeveled_edges[low_edge_id]
+            edge_ids.append(edge_id)
+        
+        loop_edge_ids = edge_ids
+    
+    return loop_edge_ids
 
 class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
     bl_idname = 'simplemorph.219_real_corner_operations_op'

@@ -2266,7 +2266,7 @@ class SIMPLE_MORPH_219_REAL_CORNER_OPERATIONS( Operator ):
             
             if len(layer_properties['edge_references']) != 0:
                 for edge_reference in layer_properties['edge_references']:
-                    edges = get_edges_from_dynamic_edge_fast(edge_reference, real_corner_layer_maps[edge_reference[3]])
+                    edges = get_edge_ids_at_layer_from_dynamic_edge_fast(edge_reference, real_corner_layer_maps, layer_index, bpy.data.objects[self.originalObjectName])
                     
                     for edge_id in edges:
                         edges_to_select.append(edge_id)
@@ -2702,7 +2702,7 @@ def gen_real_corner_meshes( obj:object, layerIndexKey:str ) -> Array | Array | A
             edges_to_bevel = []
             
             for edge_prop in propDic[ 'edge_references' ]:
-                edges_to_bevel = edges_to_bevel + edge_reference_to_edges(edge_prop, simple_morph_219_obj, previous_layer_key)
+                edges_to_bevel = edges_to_bevel + get_edge_ids_at_layer_from_dynamic_edge_fast(edge_prop, simple_morph_219_obj.layer_maps, propKey - 1, obj)
         
         bevel_result = salowell_bpy_lib.bevel(
             blender_mesh = blender_mesh,

@@ -208,26 +208,32 @@ class OT_real_corner_219_handle_dynamic_edge_select( Operator ):
         if self.action == 'BEVEL_-_LAST_EDGE_-_CURRENT_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 0:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         elif self.action == 'BEVEL_-_LAST_EDGE_-_START_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 1:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         elif self.action == 'BEVEL_-_LAST_EDGE_-_END_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 2:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         elif self.action == 'BEVEL_-_LAST_EDGE_-_PARALLEL_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 3:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         elif self.action == 'BEVEL_-_LAST_EDGE_-_LEFT_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 4:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         elif self.action == 'BEVEL_-_LAST_EDGE_-_RIGHT_EDGE':
             for value in selection_value_tmp:
                 if value[0] == 5:
+                    value = get_low_dynamic_edge_from_dynamic_edge(value, s_m_219_object.layer_maps, bpy.data.objects[s_m_219_object.object_name])
                     selection_value.append(value)
         else:
             selection_value = selection_value_tmp

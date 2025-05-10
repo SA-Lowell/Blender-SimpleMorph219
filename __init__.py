@@ -5,7 +5,7 @@ from bpy.types import Operator, Panel
 from bpy.utils import register_class, unregister_class
 
 import mathutils
-from . import simplemorph219, salowell_bpy_lib, realcorner219
+from . import simplemorph219, salowell_bpy_lib, realcorner219, layer_maps_lib_219, edge_reference_lib_219
 
 bl_info = {
     "name": "Simple Morph 219",
@@ -29,6 +29,12 @@ if "bpy" in locals():
     
     if "salowell_bpy_lib" in locals():
         importlib.reload( salowell_bpy_lib )
+    
+    if "layer_maps_lib_219" in locals():
+        importlib.reload(layer_maps_lib_219)
+    
+    if "edge_reference_lib_219" in locals():
+        importlib.reload(edge_reference_lib_219)
     
     if "realcorner219" in locals():
         realCorner219CurrentState = realcorner219.realCorner219CurrentState.value

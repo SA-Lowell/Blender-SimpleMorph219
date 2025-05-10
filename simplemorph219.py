@@ -7,7 +7,7 @@ import mathutils
 import bmesh
 import math
 
-from . import salowell_bpy_lib, realcorner219
+import SimpleMorph219.salowell_bpy_lib as salowell_bpy_lib, SimpleMorph219.realcorner219 as realcorner219
 
 #Used to identify if this object  is a Simple Morph object.
 simpleMorph219BaseName = 'simpleMorph219_Base'
